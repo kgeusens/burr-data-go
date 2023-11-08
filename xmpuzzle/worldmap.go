@@ -1,5 +1,17 @@
 package xmpuzzle
 
+// Worldmap is used to work on an instance of a voxel.
+// It transforms (x,y,z) coordinates into a numeric hash to store information in a map
+// Helper functions:
+//   HashToPoint
+//   PointToHash
+// You can rotate and translate a Worldmap
+// You can compare Worldmaps (needed to create the DLXmap)
+// You can clone a Worldmap
+// You can "instantiate" a Voxel into a Worldmap
+// I started with the idea that you need to use Worldmap to track State
+// but that is not the case. You need to track state on the Voxel, not the instance.
+
 import (
 	"slices"
 
@@ -29,24 +41,6 @@ func HashToPoint(hash int) (x, y, z int) {
 func PointToHash(x, y, z int) (hash int) {
 	hash = worldOriginIndex + worldMax*(z*worldMax+y) + x
 	return
-}
-
-func (wm Worldmap) Set(hash, val int) int {
-	wm[hash] = val
-	return val
-}
-
-func (wm Worldmap) Get(hash, val int) int {
-	return wm[hash]
-}
-
-func (wm Worldmap) SetState(hash, state int) int {
-	if state == 0 {
-		delete(wm, hash)
-	} else {
-		wm[hash] = state
-	}
-	return state
 }
 
 func (wm Worldmap) Has(hash int) bool {
@@ -96,7 +90,7 @@ func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 		for y := 0; y < v.Y; y++ {
 			for z := 0; z < v.Z; z++ {
 				if s := v.GetVoxelState(x, y, z); s > 0 {
-					wm.Set(PointToHash(x, y, z), s)
+					wm[PointToHash(x, y, z)] = s
 				}
 			}
 		}
