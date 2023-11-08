@@ -84,6 +84,25 @@ func (wm Worldmap) Clone() Worldmap {
 	return twm
 }
 
+func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
+	bb.max[0] = -1 * worldOrigin
+	bb.max[1] = -1 * worldOrigin
+	bb.max[2] = -1 * worldOrigin
+	bb.min[0] = worldOrigin
+	bb.min[1] = worldOrigin
+	bb.min[2] = worldOrigin
+	for hash := range wm {
+		x, y, z := HashToPoint(hash)
+		bb.min[0] = min(x, bb.min[0])
+		bb.min[1] = min(y, bb.min[1])
+		bb.min[2] = min(z, bb.min[2])
+		bb.max[0] = max(x, bb.max[0])
+		bb.max[1] = max(y, bb.max[1])
+		bb.max[2] = max(z, bb.max[2])
+	}
+	return
+}
+
 func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 	wm := make(Worldmap)
 	for x := 0; x < v.X; x++ {

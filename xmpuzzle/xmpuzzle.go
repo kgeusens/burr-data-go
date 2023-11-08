@@ -47,6 +47,13 @@ func (v Voxel) GetVoxelState(x, y, z int) (state int) {
 	return
 }
 
+/*
+func (v Voxel) CalcSelfSymmetries() (symgroup int) {
+	rotSequence := [16]int{1,4,10,2,8,16,5,7,13,15,6,9,11,14,18,22}
+
+}
+*/
+
 type Shape struct {
 	XMLName xml.Name `xml:"shape"`
 	Id      int      `xml:"id,attr"`
