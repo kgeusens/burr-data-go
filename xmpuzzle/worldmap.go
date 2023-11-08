@@ -91,7 +91,17 @@ func (wm Worldmap) Clone() Worldmap {
 }
 
 func NewWorldmapFromVoxel(v *Voxel) Worldmap {
-	return make(Worldmap)
+	wm := make(Worldmap)
+	for x := 0; x < v.X; x++ {
+		for y := 0; y < v.Y; y++ {
+			for z := 0; z < v.Z; z++ {
+				if s := v.GetVoxelState(x, y, z); s > 0 {
+					wm.Set(PointToHash(x, y, z), s)
+				}
+			}
+		}
+	}
+	return wm
 }
 
 // This is not a method, just a function taking 2 params

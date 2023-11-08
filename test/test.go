@@ -21,10 +21,12 @@ func main() {
 	}
 
 	//	var mapje xmpuzzle.Worldmap
+	fmt.Println(puzzle.Shapes[8].GetVoxelState(7, 5, 5))
+
 	m := xmpuzzle.NewWorldmapFromVoxel(&puzzle.Shapes[8])
-	fmt.Print(puzzle.Shapes[8].GetState(7, 5, 5))
-	for h := range m {
+	for h, v := range m {
 		x, y, z := xmpuzzle.HashToPoint(h)
-		fmt.Println(m, x, y, z)
+		fmt.Println(h, x, y, z, v)
 	}
+
 }
