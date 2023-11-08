@@ -6,7 +6,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
+	"regexp"
 	"strings"
 )
 
@@ -15,19 +16,35 @@ type GridType struct {
 }
 
 type Voxel struct {
-	XMLName  xml.Name `xml:"voxel"`
-	X        int      `xml:"x,attr"`
-	Y        int      `xml:"y,attr"`
-	Z        int      `xml:"z,attr"`
-	Weight   int      `xml:"weight,attr"`
-	Name     string   `xml:"name,attr"`
-	Type     int      `xml:"type,attr"`
-	Text     string   `xml:",chardata"`
-	Worldmap Worldmap
+	XMLName xml.Name `xml:"voxel"`
+	X       int      `xml:"x,attr"`
+	Y       int      `xml:"y,attr"`
+	Z       int      `xml:"z,attr"`
+	Weight  int      `xml:"weight,attr"`
+	Name    string   `xml:"name,attr"`
+	Type    int      `xml:"type,attr"`
+	Text    string   `xml:",chardata"`
 }
 
 func (v Voxel) String() string {
 	return fmt.Sprintf("Piece Name:%v (X:%v Y:%v Z:%v) Value:%v", v.Name, v.X, v.Y, v.Z, v.Text)
+}
+
+func (v Voxel) GetState(x, y, z int) (state int) {
+	if x >= v.X || y >= v.Y || z >= v.Z {
+		return 0
+	}
+	colorlessState := regexp.MustCompile(`[#_+]?`)
+	statePositions := colorlessState.FindAllStringIndex(v.Text, -1)
+	switch char := v.Text[statePositions[x+y*v.X+z*v.X*v.Y][0]]; char {
+	case '#':
+		state = 1
+	case '+':
+		state = 2
+	default:
+		state = 0
+	}
+	return
 }
 
 type Shape struct {
@@ -146,7 +163,7 @@ func (p *Puzzle) NumProblems() int {
 }
 
 func ReadFile(filename string) (xml string, err error) {
-	f, err := ioutil.ReadFile(filename)
+	f, err := os.ReadFile(filename)
 	if err != nil {
 		fmt.Println("error")
 		return

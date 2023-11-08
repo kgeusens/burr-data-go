@@ -90,6 +90,10 @@ func (wm Worldmap) Clone() Worldmap {
 	return twm
 }
 
+func NewWorldmapFromVoxel(v *Voxel) Worldmap {
+	return make(Worldmap)
+}
+
 // This is not a method, just a function taking 2 params
 // https://arxiv.org/pdf/cs/0011047v1.pdf
 // Multiple golang implementations exist.
@@ -138,7 +142,7 @@ func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 			// if we can not place a pixel, bail out and return nil (no DLXmap to create)
 			return nil
 		}
-		// The DLX algorith in go is different, we just need to pass the positions of the "1"s
+		// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
 		result = append(result, lookupMap[hash])
 	}
 	return
