@@ -25,7 +25,10 @@ func main() {
 	m.Set(xmpuzzle.PointToHash(1, 2, 3), 1000)
 
 	fmt.Println(m)
-	m.Translate(-10, -10, -10)
+	m.Rotate(1)
 	fmt.Println(m)
-
+	for h, _ := range m {
+		x, y, z := xmpuzzle.HashToPoint(h)
+		fmt.Println(m, x, y, z)
+	}
 }
