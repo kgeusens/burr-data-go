@@ -1,6 +1,8 @@
 package xmpuzzle
 
 import (
+	"sort"
+
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
@@ -100,8 +102,44 @@ func (wm Worldmap) Clone() Worldmap {
 //	  - Fortunately, go supports the "explode..." operation that converts an array into the set of params
 // There is no way to annotate rows when you add them to the matrix, but we can track the annotations in a separate array
 //    - Keep track of the rowId returned by AddRow and use an array Annotation[roxID]=structOfAnnotations
+//
+// The challenge with a map in Golang is that the sequence of iteration is unpredictable
 
 func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
-	// The DLX algorith in go is different,
+	// Baseline the resmap by creating 2 arrays:
+	// one for the filled pixels, and one for the vari pixels
+	// Make sure the arrays are sorted from smallest pixel to largest pixel (based on hash value of pixel)
+	var filledHashSequence, variHashSequence []int
+	for hash, state := range resmap {
+		if state == 1 {
+			filledHashSequence = append(filledHashSequence, hash)
+		} else {
+			variHashSequence = append(variHashSequence, hash)
+		}
+	}
+	sort.Ints(filledHashSequence)
+	sort.Ints(variHashSequence)
+	// create a map of hash -> arrayindex for performance
+	filledLen := len(filledHashSequence)
+	//	variLen := len(variHashSequence)
+	lookupMap := make(map[int]int)
+	for idx, hash := range filledHashSequence {
+		lookupMap[hash] = idx
+	}
+	for idx, hash := range filledHashSequence {
+		lookupMap[hash] = idx + filledLen
+	}
+	// filled and vari now contain the hashes of the filled and variable pixels of the puzzle
+	// We do this now for every call, we can speed things up if we do this once when we create the
+	// full DLX matrix at time of "solve"
+	for hash := range piecemap {
+		// check if we can place the pixels of piecmap into resmap
+		if !resmap.Has(hash) {
+			// if we can not place a pixel, bail out and return nil (no DLXmap to create)
+			return nil
+		}
+		// The DLX algorith in go is different, we just need to pass the positions of the "1"s
+		result = append(result, lookupMap[hash])
+	}
 	return
 }

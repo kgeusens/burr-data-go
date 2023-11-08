@@ -27,7 +27,7 @@ func main() {
 	fmt.Println(m)
 	m.Rotate(1)
 	fmt.Println(m)
-	for h, _ := range m {
+	for h := range m {
 		x, y, z := xmpuzzle.HashToPoint(h)
 		fmt.Println(m, x, y, z)
 	}
