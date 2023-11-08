@@ -1,7 +1,7 @@
 package xmpuzzle
 
 import (
-	"sort"
+	"slices"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
@@ -131,8 +131,8 @@ func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 			variHashSequence = append(variHashSequence, hash)
 		}
 	}
-	sort.Ints(filledHashSequence)
-	sort.Ints(variHashSequence)
+	slices.Sort(filledHashSequence)
+	slices.Sort(variHashSequence)
 	// create a map of hash -> arrayindex for performance
 	filledLen := len(filledHashSequence)
 	//	variLen := len(variHashSequence)
@@ -140,7 +140,7 @@ func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 	for idx, hash := range filledHashSequence {
 		lookupMap[hash] = idx
 	}
-	for idx, hash := range filledHashSequence {
+	for idx, hash := range variHashSequence {
 		lookupMap[hash] = idx + filledLen
 	}
 	// filled and vari now contain the hashes of the filled and variable pixels of the puzzle
