@@ -150,7 +150,7 @@ func ReadFile(filename string) (xml string, err error) {
 		return
 	}
 
-	xml = string(resB.Bytes())
+	xml = resB.String()
 
 	//	fmt.Println(xml)
 	return

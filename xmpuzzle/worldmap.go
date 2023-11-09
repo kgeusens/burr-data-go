@@ -18,13 +18,7 @@ import (
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
-const worldOrigin = 100
-const worldMax = 2*worldOrigin + 1
-const worldOriginIndex = worldOrigin * (worldMax*worldMax + worldMax + 1)
-
 //const worldSize = worldMax * worldMax * worldMax
-
-var worldSteps = [3]int{1, worldMax, worldMax * worldMax}
 
 type worldmapEntry struct {
 	position [3]int
