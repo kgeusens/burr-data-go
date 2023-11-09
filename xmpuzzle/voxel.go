@@ -80,14 +80,13 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 		}
 		// now check rotations
 		wm := NewWorldmapFromVoxel(&v)
-		for hash := range wm {
-			x, y, z := HashToPoint(hash)
-			rX, rY, rZ := burrutils.Rotate(x, y, z, rotidx)
+		for idx := range wm {
+			p := wm[idx].position
+			rX, rY, rZ := burrutils.Rotate(p[0], p[1], p[2], rotidx)
 			rX += offset[0]
 			rY += offset[1]
 			rZ += offset[2]
-			rhash := PointToHash(rX, rY, rZ)
-			if !wm.Has(rhash) {
+			if !wm.Has([3]int{rX, rY, rZ}) {
 				symmetric = false
 				break
 			}

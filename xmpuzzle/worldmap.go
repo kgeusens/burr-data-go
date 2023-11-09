@@ -13,7 +13,7 @@ package xmpuzzle
 // but that is not the case. You need to track state on the Voxel, not the instance.
 
 import (
-	"slices"
+	//	"slices"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
@@ -21,12 +21,20 @@ import (
 const worldOrigin = 100
 const worldMax = 2*worldOrigin + 1
 const worldOriginIndex = worldOrigin * (worldMax*worldMax + worldMax + 1)
-const worldSize = worldMax * worldMax * worldMax
+
+//const worldSize = worldMax * worldMax * worldMax
 
 var worldSteps = [3]int{1, worldMax, worldMax * worldMax}
 
-type Worldmap map[int]int
+type worldmapEntry struct {
+	position [3]int
+	value    int
+}
 
+// type Worldmap map[int]int
+type Worldmap []worldmapEntry
+
+/*
 func HashToPoint(hash int) (x, y, z int) {
 	var h int
 	h = hash
@@ -42,63 +50,65 @@ func PointToHash(x, y, z int) (hash int) {
 	hash = worldOriginIndex + worldMax*(z*worldMax+y) + x
 	return
 }
+*/
 
-func (wm Worldmap) Has(hash int) bool {
-	_, ok := wm[hash]
-	return ok
+func (wm Worldmap) Value(idx int) int {
+	return wm[idx].value
+}
+
+func (wm Worldmap) Position(idx int) [3]int {
+	return wm[idx].position
+}
+
+func (wm Worldmap) Has(p [3]int) (ok bool) {
+	for key := range wm {
+		if wm[key].position == p {
+			return true
+		}
+	}
+	return false
 }
 
 func (wm Worldmap) Translate(x, y, z int) {
-	twm := NewWorldmap()
 	for key := range wm {
-		twm[key] = wm[key]
-	}
-	clear(wm)
-	var nkey, offset int
-	for key := range twm {
-		offset = worldSteps[0]*x + worldSteps[1]*y + worldSteps[2]*z
-		nkey = key + offset
-		wm[nkey] = twm[key]
+		wm[key].position[0] += x
+		wm[key].position[1] += y
+		wm[key].position[2] += z
 	}
 }
 
 func (wm Worldmap) Rotate(rot int) {
-	twm := NewWorldmap()
 	for key := range wm {
-		twm[key] = wm[key]
-	}
-	clear(wm)
-	var nkey int
-	for key := range twm {
-		x, y, z := HashToPoint(key)
-		nkey = PointToHash(burrutils.Rotate(x, y, z, rot))
-		wm[nkey] = twm[key]
+		rx, ry, rz := burrutils.Rotate(wm[key].position[0], wm[key].position[1], wm[key].position[2], rot)
+		wm[key].position[0] = rx
+		wm[key].position[1] = ry
+		wm[key].position[2] = rz
 	}
 }
 
 func (wm Worldmap) Clone() Worldmap {
 	twm := NewWorldmap()
 	for key := range wm {
-		twm[key] = wm[key]
+		twm[key].position = wm[key].position
+		twm[key].value = wm[key].value
 	}
 	return twm
 }
 
 func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
-	bb.max[0] = -1 * worldOrigin
-	bb.max[1] = -1 * worldOrigin
-	bb.max[2] = -1 * worldOrigin
-	bb.min[0] = worldOrigin
-	bb.min[1] = worldOrigin
-	bb.min[2] = worldOrigin
-	for hash := range wm {
-		x, y, z := HashToPoint(hash)
-		bb.min[0] = min(x, bb.min[0])
-		bb.min[1] = min(y, bb.min[1])
-		bb.min[2] = min(z, bb.min[2])
-		bb.max[0] = max(x, bb.max[0])
-		bb.max[1] = max(y, bb.max[1])
-		bb.max[2] = max(z, bb.max[2])
+	bb.max[0] = wm[0].position[0]
+	bb.max[1] = wm[0].position[1]
+	bb.max[2] = wm[0].position[2]
+	bb.min[0] = wm[0].position[0]
+	bb.min[1] = wm[0].position[1]
+	bb.min[2] = wm[0].position[2]
+	for idx := range wm {
+		bb.min[0] = min(wm[idx].position[0], bb.min[0])
+		bb.min[1] = min(wm[idx].position[1], bb.min[1])
+		bb.min[2] = min(wm[idx].position[2], bb.min[2])
+		bb.max[0] = max(wm[idx].position[0], bb.max[0])
+		bb.max[1] = max(wm[idx].position[1], bb.max[1])
+		bb.max[2] = max(wm[idx].position[2], bb.max[2])
 	}
 	return
 }
@@ -109,7 +119,7 @@ func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 		for y := 0; y < v.Y; y++ {
 			for z := 0; z < v.Z; z++ {
 				if s := v.GetVoxelState(x, y, z); s > 0 {
-					wm[PointToHash(x, y, z)] = s
+					wm = append(wm, worldmapEntry{[3]int{x, y, z}, s})
 				}
 			}
 		}
@@ -118,7 +128,8 @@ func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 }
 
 func NewWorldmap() Worldmap {
-	return make(Worldmap)
+	pwm := new(Worldmap)
+	return *pwm
 }
 
 // This is not a method, just a function taking 2 params
@@ -139,38 +150,73 @@ func NewWorldmap() Worldmap {
 func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 	// Baseline the resmap by creating 2 arrays:
 	// one for the filled pixels, and one for the vari pixels
-	// Make sure the arrays are sorted from smallest pixel to largest pixel (based on hash value of pixel)
-	var filledHashSequence, variHashSequence []int
-	for hash := range resmap {
-		if resmap[hash] == 1 {
-			filledHashSequence = append(filledHashSequence, hash)
+	var filledHashSequence, variHashSequence [][3]int
+	for key := range resmap {
+		if resmap[key].value == 1 {
+			filledHashSequence = append(filledHashSequence, resmap[key].position)
 		} else {
-			variHashSequence = append(variHashSequence, hash)
+			variHashSequence = append(variHashSequence, resmap[key].position)
 		}
 	}
-	slices.Sort(filledHashSequence)
-	slices.Sort(variHashSequence)
-	// create a map of hash -> arrayindex for performance
+	// create a map of  -> arrayindex for performance
 	filledLen := len(filledHashSequence)
-	//	variLen := len(variHashSequence)
-	lookupMap := make(map[int]int)
-	for idx, hash := range filledHashSequence {
-		lookupMap[hash] = idx
+	lookupMap := make(map[[3]int]int)
+	for idx, pos := range filledHashSequence {
+		lookupMap[pos] = idx
 	}
-	for idx, hash := range variHashSequence {
-		lookupMap[hash] = idx + filledLen
+	for idx, pos := range variHashSequence {
+		lookupMap[pos] = idx + filledLen
 	}
-	// filled and vari now contain the hashes of the filled and variable pixels of the puzzle
+	// filled and vari now contain the positions of the filled and variable pixels of the puzzle
 	// We do this now for every call, we can speed things up if we do this once when we create the
 	// full DLX matrix at time of "solve"
-	for hash := range piecemap {
+	for key := range piecemap {
 		// check if we can place the pixels of piecmap into resmap
-		if !resmap.Has(hash) {
+		if !resmap.Has(piecemap[key].position) {
 			// if we can not place a pixel, bail out and return nil (no DLXmap to create)
 			return nil
 		}
 		// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
-		result = append(result, lookupMap[hash])
+		result = append(result, lookupMap[piecemap[key].position])
 	}
+
+	/*
+		// Baseline the resmap by creating 2 arrays:
+		// one for the filled pixels, and one for the vari pixels
+		// Make sure the arrays are sorted from smallest pixel to largest pixel (based on hash value of pixel)
+		var filledHashSequence, variHashSequence []int
+		for hash := range resmap {
+			if resmap[hash] == 1 {
+				filledHashSequence = append(filledHashSequence, hash)
+			} else {
+				variHashSequence = append(variHashSequence, hash)
+			}
+		}
+		slices.Sort(filledHashSequence)
+		slices.Sort(variHashSequence)
+		// create a map of hash -> arrayindex for performance
+		filledLen := len(filledHashSequence)
+		//	variLen := len(variHashSequence)
+		lookupMap := make(map[int]int)
+		for idx, hash := range filledHashSequence {
+			lookupMap[hash] = idx
+		}
+		for idx, hash := range variHashSequence {
+			lookupMap[hash] = idx + filledLen
+		}
+		// filled and vari now contain the hashes of the filled and variable pixels of the puzzle
+		// We do this now for every call, we can speed things up if we do this once when we create the
+		// full DLX matrix at time of "solve"
+		for hash := range piecemap {
+			// check if we can place the pixels of piecmap into resmap
+			if !resmap.Has(hash) {
+				// if we can not place a pixel, bail out and return nil (no DLXmap to create)
+				return nil
+			}
+			// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
+			result = append(result, lookupMap[hash])
+		}
+	*/
 	return
+
 }
