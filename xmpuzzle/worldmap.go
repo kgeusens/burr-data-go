@@ -50,36 +50,36 @@ func (wm Worldmap) Has(hash int) bool {
 
 func (wm Worldmap) Translate(x, y, z int) {
 	twm := NewWorldmap()
-	for key, val := range wm {
-		twm[key] = val
+	for key := range wm {
+		twm[key] = wm[key]
 	}
 	clear(wm)
 	var nkey, offset int
-	for key, val := range twm {
+	for key := range twm {
 		offset = worldSteps[0]*x + worldSteps[1]*y + worldSteps[2]*z
 		nkey = key + offset
-		wm[nkey] = val
+		wm[nkey] = twm[key]
 	}
 }
 
 func (wm Worldmap) Rotate(rot int) {
 	twm := NewWorldmap()
-	for key, val := range wm {
-		twm[key] = val
+	for key := range wm {
+		twm[key] = wm[key]
 	}
 	clear(wm)
 	var nkey int
-	for key, val := range twm {
+	for key := range twm {
 		x, y, z := HashToPoint(key)
 		nkey = PointToHash(burrutils.Rotate(x, y, z, rot))
-		wm[nkey] = val
+		wm[nkey] = twm[key]
 	}
 }
 
 func (wm Worldmap) Clone() Worldmap {
 	twm := NewWorldmap()
-	for key, val := range wm {
-		twm[key] = val
+	for key := range wm {
+		twm[key] = wm[key]
 	}
 	return twm
 }
@@ -141,8 +141,8 @@ func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 	// one for the filled pixels, and one for the vari pixels
 	// Make sure the arrays are sorted from smallest pixel to largest pixel (based on hash value of pixel)
 	var filledHashSequence, variHashSequence []int
-	for hash, state := range resmap {
-		if state == 1 {
+	for hash := range resmap {
+		if resmap[hash] == 1 {
 			filledHashSequence = append(filledHashSequence, hash)
 		} else {
 			variHashSequence = append(variHashSequence, hash)
