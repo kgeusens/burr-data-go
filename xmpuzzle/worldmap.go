@@ -49,7 +49,7 @@ func (wm Worldmap) Has(hash int) bool {
 }
 
 func (wm Worldmap) Translate(x, y, z int) {
-	twm := make(Worldmap)
+	twm := NewWorldmap()
 	for key, val := range wm {
 		twm[key] = val
 	}
@@ -63,7 +63,7 @@ func (wm Worldmap) Translate(x, y, z int) {
 }
 
 func (wm Worldmap) Rotate(rot int) {
-	twm := make(Worldmap)
+	twm := NewWorldmap()
 	for key, val := range wm {
 		twm[key] = val
 	}
@@ -77,7 +77,7 @@ func (wm Worldmap) Rotate(rot int) {
 }
 
 func (wm Worldmap) Clone() Worldmap {
-	twm := make(Worldmap)
+	twm := NewWorldmap()
 	for key, val := range wm {
 		twm[key] = val
 	}
@@ -104,7 +104,7 @@ func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
 }
 
 func NewWorldmapFromVoxel(v *Voxel) Worldmap {
-	wm := make(Worldmap)
+	wm := NewWorldmap()
 	for x := 0; x < v.X; x++ {
 		for y := 0; y < v.Y; y++ {
 			for z := 0; z < v.Z; z++ {
@@ -115,6 +115,10 @@ func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 		}
 	}
 	return wm
+}
+
+func NewWorldmap() Worldmap {
+	return make(Worldmap)
 }
 
 // This is not a method, just a function taking 2 params
