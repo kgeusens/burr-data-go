@@ -173,44 +173,5 @@ func GetDLXmap(resmap, piecemap Worldmap) (result []int) {
 		// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
 		result = append(result, lookupMap[piecemap[key].position])
 	}
-
-	/*
-		// Baseline the resmap by creating 2 arrays:
-		// one for the filled pixels, and one for the vari pixels
-		// Make sure the arrays are sorted from smallest pixel to largest pixel (based on hash value of pixel)
-		var filledHashSequence, variHashSequence []int
-		for hash := range resmap {
-			if resmap[hash] == 1 {
-				filledHashSequence = append(filledHashSequence, hash)
-			} else {
-				variHashSequence = append(variHashSequence, hash)
-			}
-		}
-		slices.Sort(filledHashSequence)
-		slices.Sort(variHashSequence)
-		// create a map of hash -> arrayindex for performance
-		filledLen := len(filledHashSequence)
-		//	variLen := len(variHashSequence)
-		lookupMap := make(map[int]int)
-		for idx, hash := range filledHashSequence {
-			lookupMap[hash] = idx
-		}
-		for idx, hash := range variHashSequence {
-			lookupMap[hash] = idx + filledLen
-		}
-		// filled and vari now contain the hashes of the filled and variable pixels of the puzzle
-		// We do this now for every call, we can speed things up if we do this once when we create the
-		// full DLX matrix at time of "solve"
-		for hash := range piecemap {
-			// check if we can place the pixels of piecmap into resmap
-			if !resmap.Has(hash) {
-				// if we can not place a pixel, bail out and return nil (no DLXmap to create)
-				return nil
-			}
-			// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
-			result = append(result, lookupMap[hash])
-		}
-	*/
 	return
-
 }

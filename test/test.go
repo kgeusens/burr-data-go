@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	//	burrutils "github.com/kgeusens/go/burr-data/burrutils"
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
@@ -36,8 +36,7 @@ func main() {
 	fmt.Println(len(dlx))
 	fmt.Println(dlx)
 
-	/*
-		syms := puzzle.Shapes[8].CalcSelfSymmetries()
-		fmt.Println(burrutils.HashToRotations(syms))
-	*/
+	syms := puzzle.Shapes[8].CalcSelfSymmetries()
+	fmt.Println(burrutils.HashToRotations(syms))
+
 }
