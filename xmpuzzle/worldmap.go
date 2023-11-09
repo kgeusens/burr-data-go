@@ -107,6 +107,7 @@ func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
 	return
 }
 
+/*
 func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 	wm := NewWorldmap()
 	for z := 0; z < v.Z; z++ {
@@ -120,6 +121,7 @@ func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 	}
 	return wm
 }
+*/
 
 func NewWorldmap() Worldmap {
 	pwm := new(Worldmap)

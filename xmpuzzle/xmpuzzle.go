@@ -93,6 +93,10 @@ func (p *Problem) NumShapes() int {
 	return len(p.Shapes)
 }
 
+func (p *Problem) GetProblemShapes() {
+	return
+}
+
 type Comment struct {
 	XMLName xml.Name `xml:"comment"`
 	Text    string   `xml:",chardata"`

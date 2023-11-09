@@ -42,7 +42,7 @@ func (v Voxel) GetVoxelState(x, y, z int) (state int) {
 
 func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 	rotSequence := [16]int{1, 4, 10, 2, 8, 16, 5, 7, 13, 15, 6, 9, 11, 14, 18, 22}
-	wm := NewWorldmapFromVoxel(&v)
+	wm := v.NewWorldmap()
 	bb := wm.CalcBoundingbox()
 	bbX, bbY, bbZ := bb.Size()
 
@@ -79,7 +79,7 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 			continue
 		}
 		// now check rotations
-		wm := NewWorldmapFromVoxel(&v)
+		wm := v.NewWorldmap()
 		for idx := range wm {
 			p := wm[idx].position
 			rX, rY, rZ := burrutils.Rotate(p[0], p[1], p[2], rotidx)
@@ -111,4 +111,18 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 	}
 
 	return
+}
+
+func (v *Voxel) NewWorldmap() Worldmap {
+	wm := NewWorldmap()
+	for z := 0; z < v.Z; z++ {
+		for y := 0; y < v.Y; y++ {
+			for x := 0; x < v.X; x++ {
+				if s := v.GetVoxelState(x, y, z); s > 0 {
+					wm = append(wm, worldmapEntry{[3]int{x, y, z}, s})
+				}
+			}
+		}
+	}
+	return wm
 }

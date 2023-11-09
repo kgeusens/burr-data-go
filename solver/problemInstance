@@ -1,0 +1,15 @@
+package solver
+
+type ProblemInstance struct {
+	puzzle        *Puzzle
+	problemIdx    int
+	instanceCache map[string]voxelInstance
+}
+
+func NewProblemInstance(puzzlePointer *Puzzle, problemIdx int) (pi ProblemInstance) {
+	ppi := new(ProblemInstance)
+	ppi.puzzle = puzzlePointer
+	ppi.problemIdx = problemIdx
+
+	return
+}

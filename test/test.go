@@ -22,8 +22,8 @@ func main() {
 		fmt.Println(v)
 	}
 
-	r := xmpuzzle.NewWorldmapFromVoxel(&puzzle.Shapes[8])
-	p := xmpuzzle.NewWorldmapFromVoxel(&puzzle.Shapes[4])
+	r := puzzle.Shapes[8].NewWorldmap()
+	p := puzzle.Shapes[4].NewWorldmap()
 	fmt.Println(len(r))
 	fmt.Println(r)
 	fmt.Println()
