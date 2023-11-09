@@ -109,9 +109,9 @@ func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
 
 func NewWorldmapFromVoxel(v *Voxel) Worldmap {
 	wm := NewWorldmap()
-	for x := 0; x < v.X; x++ {
+	for z := 0; z < v.Z; z++ {
 		for y := 0; y < v.Y; y++ {
-			for z := 0; z < v.Z; z++ {
+			for x := 0; x < v.X; x++ {
 				if s := v.GetVoxelState(x, y, z); s > 0 {
 					wm = append(wm, worldmapEntry{[3]int{x, y, z}, s})
 				}

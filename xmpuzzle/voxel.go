@@ -27,9 +27,9 @@ func (v Voxel) GetVoxelState(x, y, z int) (state int) {
 	if x >= v.X || y >= v.Y || z >= v.Z {
 		return 0
 	}
-	colorlessState := regexp.MustCompile(`[#_+]?`)
-	statePositions := colorlessState.FindAllStringIndex(v.Text, -1)
-	switch char := v.Text[statePositions[x+y*v.X+z*v.X*v.Y][0]]; char {
+	colorlessState := regexp.MustCompile(`/\d+/g`)
+	statePositions := colorlessState.ReplaceAllString(v.Text, "")
+	switch char := statePositions[x+y*v.X+z*v.X*v.Y]; char {
 	case '#':
 		state = 1
 	case '+':
