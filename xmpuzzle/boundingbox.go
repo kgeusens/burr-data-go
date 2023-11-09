@@ -11,3 +11,9 @@ func (b Boundingbox) Size() (x, y, z int) {
 	z = b.max[2] - b.min[2]
 	return
 }
+
+func NewBoundingbox() (bb Boundingbox) {
+	pbb := new(Boundingbox)
+	bb = *pbb
+	return
+}

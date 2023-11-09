@@ -7,52 +7,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
 )
 
 type GridType struct {
 	Type int `xml:"type,attr"`
 }
-
-type Voxel struct {
-	XMLName xml.Name `xml:"voxel"`
-	X       int      `xml:"x,attr"`
-	Y       int      `xml:"y,attr"`
-	Z       int      `xml:"z,attr"`
-	Weight  int      `xml:"weight,attr"`
-	Name    string   `xml:"name,attr"`
-	Type    int      `xml:"type,attr"`
-	Text    string   `xml:",chardata"`
-}
-
-func (v Voxel) String() string {
-	return fmt.Sprintf("Piece Name:%v (X:%v Y:%v Z:%v) Value:%v", v.Name, v.X, v.Y, v.Z, v.Text)
-}
-
-func (v Voxel) GetVoxelState(x, y, z int) (state int) {
-	if x >= v.X || y >= v.Y || z >= v.Z {
-		return 0
-	}
-	colorlessState := regexp.MustCompile(`[#_+]?`)
-	statePositions := colorlessState.FindAllStringIndex(v.Text, -1)
-	switch char := v.Text[statePositions[x+y*v.X+z*v.X*v.Y][0]]; char {
-	case '#':
-		state = 1
-	case '+':
-		state = 2
-	default:
-		state = 0
-	}
-	return
-}
-
-/*
-func (v Voxel) CalcSelfSymmetries() (symgroup int) {
-	rotSequence := [16]int{1,4,10,2,8,16,5,7,13,15,6,9,11,14,18,22}
-
-}
-*/
 
 type Shape struct {
 	XMLName xml.Name `xml:"shape"`
