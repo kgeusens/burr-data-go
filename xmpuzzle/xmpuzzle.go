@@ -16,11 +16,11 @@ type GridType struct {
 
 type Shape struct {
 	XMLName xml.Name `xml:"shape"`
-	Id      int      `xml:"id,attr"`
-	Count   int      `xml:"count,attr"`
-	Min     int      `xml:"min,attr"`
-	Max     int      `xml:"max,attr"`
-	Group   int      `xml:"group,attr"`
+	Id      uint8    `xml:"id,attr"`
+	Count   uint8    `xml:"count,attr"`
+	Min     uint8    `xml:"min,attr"`
+	Max     uint8    `xml:"max,attr"`
+	Group   uint8    `xml:"group,attr"`
 }
 
 type Result struct {

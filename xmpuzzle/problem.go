@@ -21,13 +21,13 @@ func (p *Problem) NumShapes() int {
 	return len(p.Shapes)
 }
 
-func (p *Problem) GetShapemap() (result []int) {
+func (p *Problem) GetShapemap() (result []uint8) {
 	for _, shape := range p.Shapes {
 		count := shape.Count
 		if count == 0 {
 			count = shape.Max
 		}
-		for i := 0; i < count; i++ {
+		for i := uint8(0); i < count; i++ {
 			result = append(result, shape.Id)
 		}
 	}

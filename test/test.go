@@ -43,7 +43,7 @@ func main() {
 	//fmt.Println(solver.NewVoxelinstance(&puzzle.Shapes[4], 0).GetWorldmap())
 
 	cache := solver.NewSolverCache(&puzzle, 0)
-	pinstance := cache.GetShapeInstance(4, 2)
+	pinstance := cache.GetShapeInstance(4, 8)
 	fmt.Println(*pinstance)
 
 }

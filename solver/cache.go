@@ -10,7 +10,7 @@ type SolverCache_t struct {
 	puzzle        *xmpuzzle.Puzzle
 	problemIndex  uint
 	idSize        uint
-	shapemap      []int
+	shapemap      []uint8
 	resultVoxel   *xmpuzzle.Voxel
 	instanceCache map[int]*VoxelInstance
 	// movementCache map[uint64]matrix
