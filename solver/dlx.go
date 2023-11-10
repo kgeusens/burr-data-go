@@ -16,13 +16,14 @@ package solver
 // The challenge with a map in Golang is that the sequence of iteration is unpredictable
 
 func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []int) {
-	// Baseline the resmap by creating 2 arrays:
-	// one for the filled pixels, and one for the vari pixels
+	// Get the worldmap of the resultvoxel
 	r := NewVoxelinstance(sc.resultVoxel, 0)
-	//	rbb := r.GetBoundingbox()
 	resmap := *(r.GetWorldmap())
+	// Get a clone of the worldmap of the shape and translate it
 	piecemap := sc.GetShapeInstance(shapeid, rotid).GetWorldmap().Clone()
 	piecemap.Translate(x, y, z)
+	// Baseline the resmap by creating 2 arrays:
+	// one for the filled pixels, and one for the vari pixels
 	var filledHashSequence, variHashSequence [][3]int
 	for key := range resmap {
 		if resmap.Value(key) == 1 {
@@ -31,7 +32,7 @@ func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []in
 			variHashSequence = append(variHashSequence, resmap.Position(key))
 		}
 	}
-	// create a map of  -> arrayindex for performance
+	// create a lookupmap for performance
 	filledLen := len(filledHashSequence)
 	lookupMap := make(map[[3]int]int)
 	for idx, pos := range filledHashSequence {
@@ -52,5 +53,8 @@ func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []in
 		// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
 		result = append(result, lookupMap[piecemap.Position(key)])
 	}
+	// Finally we need to add the optional column for the piece (regardless of rotation)
+	// This is at index "(size of resultvoxel) + pieceID"
+	result = append(result, resmap.Size()+int(shapeid))
 	return
 }

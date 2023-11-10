@@ -63,6 +63,10 @@ func (wm Worldmap) Has(p [3]int) (ok bool) {
 	return false
 }
 
+func (wm Worldmap) Size() int {
+	return len(wm)
+}
+
 func (wm Worldmap) Translate(x, y, z int) {
 	for key := range wm {
 		wm[key].position[0] += x
