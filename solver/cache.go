@@ -15,13 +15,14 @@ values are arrays with 3 positions ([3]int16), one value per axis
 //type maxValMatrix_t []maxVal_t
 
 type SolverCache_t struct {
-	puzzle        *xmpuzzle.Puzzle
-	problemIndex  uint
-	idSize        uint
-	shapemap      []uint8
-	resultVoxel   *xmpuzzle.Voxel
-	instanceCache map[uint]*VoxelInstance
-	movementCache map[uint64]*maxVal_t
+	puzzle         *xmpuzzle.Puzzle
+	problemIndex   uint
+	idSize         uint
+	shapemap       []uint8
+	resultVoxel    *xmpuzzle.Voxel
+	resultInstance *VoxelInstance
+	instanceCache  map[uint]*VoxelInstance
+	movementCache  map[uint64]*maxVal_t
 }
 
 /*
@@ -42,6 +43,8 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	sc.shapemap = sc.GetProblem().GetShapemap()
 	sc.idSize = uint(len(sc.shapemap))
 	sc.resultVoxel = &puzzle.Shapes[sc.GetProblem().Result.Id]
+	resi := NewVoxelinstance(sc.resultVoxel, 0)
+	sc.resultInstance = &resi
 	sc.instanceCache = make(map[uint]*VoxelInstance)
 	sc.movementCache = make(map[uint64]*maxVal_t)
 	return
@@ -61,6 +64,10 @@ func (sc SolverCache_t) GetShapeInstance(id, rot uint) (vi *VoxelInstance) {
 		sc.instanceCache[hash] = vi
 	}
 	return
+}
+
+func (sc SolverCache_t) GetResultInstance() (vi *VoxelInstance) {
+	return sc.resultInstance
 }
 
 /*

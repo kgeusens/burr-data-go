@@ -17,7 +17,7 @@ package solver
 
 func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []int) {
 	// Get the worldmap of the resultvoxel
-	r := NewVoxelinstance(sc.resultVoxel, 0)
+	r := sc.GetResultInstance()
 	resmap := *(r.GetWorldmap())
 	// Get a clone of the worldmap of the shape and translate it
 	piecemap := sc.GetShapeInstance(shapeid, rotid).GetWorldmap().Clone()
@@ -56,5 +56,9 @@ func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []in
 	// Finally we need to add the optional column for the piece (regardless of rotation)
 	// This is at index "(size of resultvoxel) + pieceID"
 	result = append(result, resmap.Size()+int(shapeid))
+	return
+}
+
+func (sc SolverCache_t) GetDLXMatrix() (res [][]int) {
 	return
 }
