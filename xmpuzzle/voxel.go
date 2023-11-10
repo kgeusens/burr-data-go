@@ -63,12 +63,12 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 		rotmin := [3]int{}
 		rotmax := [3]int{}
 		offset := [3]int{0, 0, 0}
-		rotmin[0], rotmin[1], rotmin[2] = burrutils.Rotate(bb.min[0], bb.min[1], bb.min[2], rotidx)
-		rotmax[0], rotmax[1], rotmax[2] = burrutils.Rotate(bb.max[0], bb.max[1], bb.max[2], rotidx)
+		rotmin[0], rotmin[1], rotmin[2] = burrutils.Rotate(bb.Min[0], bb.Min[1], bb.Min[2], rotidx)
+		rotmax[0], rotmax[1], rotmax[2] = burrutils.Rotate(bb.Max[0], bb.Max[1], bb.Max[2], rotidx)
 		for i := 0; i < 3; i++ {
-			rbb.min[i] = min(rotmin[i], rotmax[i])
-			rbb.max[i] = max(rotmin[i], rotmax[i])
-			offset[i] = bb.min[i] - rbb.min[i]
+			rbb.Min[i] = min(rotmin[i], rotmax[i])
+			rbb.Max[i] = max(rotmin[i], rotmax[i])
+			offset[i] = bb.Min[i] - rbb.Min[i]
 		}
 
 		// only continue if boxes have the same size

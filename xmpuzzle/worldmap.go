@@ -90,19 +90,19 @@ func (wm Worldmap) Clone() Worldmap {
 }
 
 func (wm Worldmap) CalcBoundingbox() (bb Boundingbox) {
-	bb.max[0] = wm[0].position[0]
-	bb.max[1] = wm[0].position[1]
-	bb.max[2] = wm[0].position[2]
-	bb.min[0] = wm[0].position[0]
-	bb.min[1] = wm[0].position[1]
-	bb.min[2] = wm[0].position[2]
+	bb.Max[0] = wm[0].position[0]
+	bb.Max[1] = wm[0].position[1]
+	bb.Max[2] = wm[0].position[2]
+	bb.Min[0] = wm[0].position[0]
+	bb.Min[1] = wm[0].position[1]
+	bb.Min[2] = wm[0].position[2]
 	for idx := range wm {
-		bb.min[0] = min(wm[idx].position[0], bb.min[0])
-		bb.min[1] = min(wm[idx].position[1], bb.min[1])
-		bb.min[2] = min(wm[idx].position[2], bb.min[2])
-		bb.max[0] = max(wm[idx].position[0], bb.max[0])
-		bb.max[1] = max(wm[idx].position[1], bb.max[1])
-		bb.max[2] = max(wm[idx].position[2], bb.max[2])
+		bb.Min[0] = min(wm[idx].position[0], bb.Min[0])
+		bb.Min[1] = min(wm[idx].position[1], bb.Min[1])
+		bb.Min[2] = min(wm[idx].position[2], bb.Min[2])
+		bb.Max[0] = max(wm[idx].position[0], bb.Max[0])
+		bb.Max[1] = max(wm[idx].position[1], bb.Max[1])
+		bb.Max[2] = max(wm[idx].position[2], bb.Max[2])
 	}
 	return
 }

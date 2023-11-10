@@ -1,14 +1,14 @@
 package xmpuzzle
 
 type Boundingbox struct {
-	min [3]int
-	max [3]int
+	Min [3]int
+	Max [3]int
 }
 
 func (b Boundingbox) Size() (x, y, z int) {
-	x = b.max[0] - b.min[0]
-	y = b.max[1] - b.min[1]
-	z = b.max[2] - b.min[2]
+	x = b.Max[0] - b.Min[0]
+	y = b.Max[1] - b.Min[1]
+	z = b.Max[2] - b.Min[2]
 	return
 }
 
