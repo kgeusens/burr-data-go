@@ -74,3 +74,16 @@ func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 uint, dx, dy, dz i
 	hash = (((bigid1*24+bigrot1)*uint64(sc.idSize)+bigid2)*24+bigrot2)*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(dz*int(worldMax)+dy)+dx)
 	return
 }
+
+func (sc SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int) (pmoves *maxValMatrix_t) {
+	hash := sc.CalcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
+	pmoves = sc.movementCache[hash]
+	if pmoves == nil {
+		moves := make(maxValMatrix_t, sc.idSize*sc.idSize)
+		pmoves = &moves
+		sc.movementCache[hash] = pmoves
+	}
+	//	moves:=*pmoves
+	// now start calculating
+	return
+}

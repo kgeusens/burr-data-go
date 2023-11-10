@@ -46,4 +46,6 @@ func main() {
 	pinstance := cache.GetShapeInstance(4, 8)
 	fmt.Println(*pinstance)
 
+	moves := cache.GetMaxValues(1, 2, 3, 4, 5, 6, 7)
+	fmt.Println(*moves)
 }
