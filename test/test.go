@@ -44,8 +44,8 @@ func main() {
 
 	cache := solver.NewSolverCache(&puzzle, 0)
 	pinstance := cache.GetShapeInstance(4, 8)
-	fmt.Println(*pinstance)
+	fmt.Println(*pinstance.GetWorldmap())
 
-	moves := cache.GetMaxValues(1, 2, 3, 4, 5, 6, 7)
+	moves := cache.GetMaxValues(0, 0, 1, 0, 0, 1, 1)
 	fmt.Println(*moves)
 }
