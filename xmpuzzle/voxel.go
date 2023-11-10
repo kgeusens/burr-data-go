@@ -10,12 +10,12 @@ import (
 
 type Voxel struct {
 	XMLName xml.Name `xml:"voxel"`
-	X       int      `xml:"x,attr"`
-	Y       int      `xml:"y,attr"`
-	Z       int      `xml:"z,attr"`
-	Weight  int      `xml:"weight,attr"`
+	X       uint     `xml:"x,attr"`
+	Y       uint     `xml:"y,attr"`
+	Z       uint     `xml:"z,attr"`
+	Weight  uint     `xml:"weight,attr"`
 	Name    string   `xml:"name,attr"`
-	Type    int      `xml:"type,attr"`
+	Type    uint     `xml:"type,attr"`
 	Text    string   `xml:",chardata"`
 }
 
@@ -23,7 +23,7 @@ func (v Voxel) String() string {
 	return fmt.Sprintf("Piece Name:%v (X:%v Y:%v Z:%v) Value:%v", v.Name, v.X, v.Y, v.Z, v.Text)
 }
 
-func (v Voxel) GetVoxelState(x, y, z int) (state int) {
+func (v Voxel) GetVoxelState(x, y, z uint) (state int) {
 	if x >= v.X || y >= v.Y || z >= v.Z {
 		return 0
 	}
@@ -115,11 +115,11 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 
 func (v *Voxel) NewWorldmap() Worldmap {
 	wm := NewWorldmap()
-	for z := 0; z < v.Z; z++ {
-		for y := 0; y < v.Y; y++ {
-			for x := 0; x < v.X; x++ {
+	for z := uint(0); z < v.Z; z++ {
+		for y := uint(0); y < v.Y; y++ {
+			for x := uint(0); x < v.X; x++ {
 				if s := v.GetVoxelState(x, y, z); s > 0 {
-					wm = append(wm, worldmapEntry{[3]int{x, y, z}, s})
+					wm = append(wm, worldmapEntry{[3]int{int(x), int(y), int(z)}, s})
 				}
 			}
 		}

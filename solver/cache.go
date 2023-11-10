@@ -8,8 +8,8 @@ import (
 
 type SolverCache_t struct {
 	puzzle        *xmpuzzle.Puzzle
-	problemIndex  int
-	idSize        int
+	problemIndex  uint
+	idSize        uint
 	shapemap      []int
 	resultVoxel   *xmpuzzle.Voxel
 	instanceCache map[int]*VoxelInstance
@@ -24,13 +24,13 @@ const worldMax int = (2*worldOrigin + 1) * (2*worldOrigin + 1) * (2*worldOrigin 
 
 /*
  */
-func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx int) (sc SolverCache_t) {
+func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t) {
 	psc := new(SolverCache_t)
 	sc = *psc
 	sc.puzzle = puzzle
 	sc.problemIndex = problemIdx
 	sc.shapemap = sc.GetProblem().GetShapemap()
-	sc.idSize = len(sc.shapemap)
+	sc.idSize = uint(len(sc.shapemap))
 	sc.resultVoxel = &puzzle.Shapes[sc.GetProblem().Result.Id]
 	sc.instanceCache = make(map[int]*VoxelInstance)
 	return
@@ -51,3 +51,10 @@ func (sc SolverCache_t) GetShapeInstance(id, rot int) (vi *VoxelInstance) {
 	}
 	return
 }
+
+/*
+func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 uint, dx, dy, dz int) (hash uint64) {
+	hash = (((id1*24+rot1)*sc.idSize+id2)*24+rot2)*worldMax + DATA.PieceMap.XYZToHash(dx, dy, dz)
+	return
+}
+*/
