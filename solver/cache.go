@@ -12,7 +12,7 @@ type maxVal_t [3]int16
 maxValMatrix is a two dimensional (idSize X idSize) array
 values are arrays with 3 positions ([3]int16), one value per axis
 */
-type maxValMatrix_t []maxVal_t
+//type maxValMatrix_t []maxVal_t
 
 type SolverCache_t struct {
 	puzzle        *xmpuzzle.Puzzle
