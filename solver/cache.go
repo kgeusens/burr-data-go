@@ -20,7 +20,7 @@ type SolverCache_t struct {
 	idSize        uint
 	shapemap      []uint8
 	resultVoxel   *xmpuzzle.Voxel
-	instanceCache map[int]*VoxelInstance
+	instanceCache map[uint]*VoxelInstance
 	movementCache map[uint64]*maxValMatrix_t
 }
 
@@ -42,7 +42,7 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	sc.shapemap = sc.GetProblem().GetShapemap()
 	sc.idSize = uint(len(sc.shapemap))
 	sc.resultVoxel = &puzzle.Shapes[sc.GetProblem().Result.Id]
-	sc.instanceCache = make(map[int]*VoxelInstance)
+	sc.instanceCache = make(map[uint]*VoxelInstance)
 	sc.movementCache = make(map[uint64]*maxValMatrix_t)
 	return
 }
@@ -51,7 +51,7 @@ func (sc SolverCache_t) GetProblem() (pb *xmpuzzle.Problem) {
 	return &sc.puzzle.Problems[sc.problemIndex]
 }
 
-func (sc SolverCache_t) GetShapeInstance(id, rot int) (vi *VoxelInstance) {
+func (sc SolverCache_t) GetShapeInstance(id, rot uint) (vi *VoxelInstance) {
 	// hash is based on 24 max rotations
 	hash := id*24 + rot
 	vi = sc.instanceCache[hash]
@@ -82,8 +82,8 @@ func (sc SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int) 
 		moves := make(maxValMatrix_t, sc.idSize*sc.idSize)
 		pmoves = &moves
 		sc.movementCache[hash] = pmoves
+		// now start calculating
+		//		s1 := sc.GetShapeInstance(id1, rot1)
 	}
-	//	moves:=*pmoves
-	// now start calculating
 	return
 }

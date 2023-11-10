@@ -41,7 +41,7 @@ func (v Voxel) GetVoxelState(x, y, z uint) (state int8) {
 }
 
 func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
-	rotSequence := [16]int{1, 4, 10, 2, 8, 16, 5, 7, 13, 15, 6, 9, 11, 14, 18, 22}
+	rotSequence := [16]uint{1, 4, 10, 2, 8, 16, 5, 7, 13, 15, 6, 9, 11, 14, 18, 22}
 	wm := v.NewWorldmap()
 	bb := wm.CalcBoundingbox()
 	bbX, bbY, bbZ := bb.Size()
@@ -49,7 +49,7 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 	symmetryMatrix = 1 // rotation 0
 	rbb := NewBoundingbox()
 	next := 1
-	rotidx := 0
+	rotidx := uint(0)
 
 	for next < len(rotSequence) {
 		rotidx = rotSequence[next]

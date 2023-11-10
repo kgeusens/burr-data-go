@@ -71,7 +71,7 @@ func (wm Worldmap) Translate(x, y, z int) {
 	}
 }
 
-func (wm Worldmap) Rotate(rot int) {
+func (wm Worldmap) Rotate(rot uint) {
 	for key := range wm {
 		rx, ry, rz := burrutils.Rotate(wm[key].position[0], wm[key].position[1], wm[key].position[2], rot)
 		wm[key].position[0] = rx

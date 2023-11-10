@@ -9,12 +9,12 @@ type VoxelInstance struct {
 	//	voxel          *xmpuzzle.Voxel
 	//	offset         [3]int
 	hotspot        [3]int
-	rotation       int
+	rotation       uint
 	cachedWorldmap xmpuzzle.Worldmap
 	cachedBB       xmpuzzle.Boundingbox
 }
 
-func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot int) (vi VoxelInstance) {
+func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot uint) (vi VoxelInstance) {
 	pvi := new(VoxelInstance)
 	vi = *pvi
 	//	vi.voxel = voxel

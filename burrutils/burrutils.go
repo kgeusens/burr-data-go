@@ -124,7 +124,7 @@ func ReduceRotations(symgroupID int, rotgroupBitmap int) (resultBitmap int) {
 /*
 Rotate and Translate a Worldmap
 */
-func Rotate(x, y, z, rot int) (rx, ry, rz int) {
+func Rotate(x, y, z int, rot uint) (rx, ry, rz int) {
 	rotmat := rotations[rot]
 	rx = x*rotmat[0] + y*rotmat[1] + z*rotmat[2]
 	ry = x*rotmat[3] + y*rotmat[4] + z*rotmat[5]
