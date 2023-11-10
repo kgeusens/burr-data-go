@@ -88,14 +88,6 @@ func ParseXML(xmlstring string) Puzzle {
 	return p
 }
 
-func (p *Puzzle) NumPieces() int {
-	return len(p.Shapes)
-}
-
-func (p *Puzzle) NumProblems() int {
-	return len(p.Problems)
-}
-
 func ReadFile(filename string) (xml string, err error) {
 	f, err := os.ReadFile(filename)
 	if err != nil {

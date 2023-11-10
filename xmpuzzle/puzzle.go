@@ -20,3 +20,11 @@ func (p Puzzle) String() string {
 func (p *Puzzle) GetPiece(idx int) Voxel {
 	return p.Shapes[idx]
 }
+
+func (p *Puzzle) NumPieces() int {
+	return len(p.Shapes)
+}
+
+func (p *Puzzle) NumProblems() int {
+	return len(p.Problems)
+}
