@@ -15,7 +15,7 @@ package solver
 //
 // The challenge with a map in Golang is that the sequence of iteration is unpredictable
 
-func (sc SolverCache_t) GetDLXmap(shapeid, rotid uint, x, y, z int) (result []int) {
+func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []int) {
 	// Baseline the resmap by creating 2 arrays:
 	// one for the filled pixels, and one for the vari pixels
 	r := NewVoxelinstance(sc.resultVoxel, 0)

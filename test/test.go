@@ -38,7 +38,7 @@ func main() {
 	//fmt.Println(solver.NewVoxelinstance(&puzzle.Shapes[4], 0).GetWorldmap())
 
 	cache := solver.NewSolverCache(&puzzle, 0)
-	dlx := cache.GetDLXmap(4, 0, 0, 0, 0)
+	dlx := cache.GetDLXrow(4, 0, 0, 0, 0)
 	slices.Sort(dlx)
 	fmt.Println(len(dlx))
 	fmt.Println(dlx)
