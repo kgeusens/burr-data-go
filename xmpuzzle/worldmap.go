@@ -22,7 +22,7 @@ import (
 
 type worldmapEntry struct {
 	position [3]int
-	value    int
+	value    int8
 }
 
 // type Worldmap map[int]int
@@ -46,7 +46,7 @@ func PointToHash(x, y, z int) (hash int) {
 }
 */
 
-func (wm Worldmap) Value(idx int) int {
+func (wm Worldmap) Value(idx int) int8 {
 	return wm[idx].value
 }
 

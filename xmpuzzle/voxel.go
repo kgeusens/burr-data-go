@@ -23,7 +23,7 @@ func (v Voxel) String() string {
 	return fmt.Sprintf("Piece Name:%v (X:%v Y:%v Z:%v) Value:%v", v.Name, v.X, v.Y, v.Z, v.Text)
 }
 
-func (v Voxel) GetVoxelState(x, y, z uint) (state int) {
+func (v Voxel) GetVoxelState(x, y, z uint) (state int8) {
 	if x >= v.X || y >= v.Y || z >= v.Z {
 		return 0
 	}
