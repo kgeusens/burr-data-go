@@ -9,20 +9,26 @@ import (
 type maxVal_t [3]int16
 
 /*
-maxValMatrix is a two dimensional (idSize X idSize) array
-values are arrays with 3 positions ([3]int16), one value per axis
-*/
-//type maxValMatrix_t []maxVal_t
+SolverCache_t
 
+Dynamic cache for information that is frequently needed during the
+assembly and solution of a problem
+
+Informations is either calculated and cached at time of creation,
+or dynamically at time of consultation (and then cached for future).
+*/
 type SolverCache_t struct {
 	puzzle         *xmpuzzle.Puzzle
 	problemIndex   uint
 	idSize         uint
+	numPrimary     int
+	numSecondary   int
 	shapemap       []uint8
 	resultVoxel    *xmpuzzle.Voxel
 	resultInstance *VoxelInstance
 	instanceCache  map[uint]*VoxelInstance
 	movementCache  map[uint64]*maxVal_t
+	dlxLookupmap   map[[3]int]int
 }
 
 /*
@@ -47,6 +53,32 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	sc.resultInstance = &resi
 	sc.instanceCache = make(map[uint]*VoxelInstance)
 	sc.movementCache = make(map[uint64]*maxVal_t)
+
+	resmap := *(resi.GetWorldmap())
+	// Baseline the resmap by creating 2 arrays:
+	// one for the filled pixels, and one for the vari pixels
+	var filledHashSequence, variHashSequence [][3]int
+	for key := range resmap {
+		if resmap.Value(key) == 1 {
+			filledHashSequence = append(filledHashSequence, resmap.Position(key))
+		} else {
+			variHashSequence = append(variHashSequence, resmap.Position(key))
+		}
+	}
+	// create a lookupmap for performance
+	filledLen := len(filledHashSequence)
+	lookupMap := make(map[[3]int]int)
+	for idx, pos := range filledHashSequence {
+		lookupMap[pos] = idx
+	}
+	for idx, pos := range variHashSequence {
+		lookupMap[pos] = idx + filledLen
+	}
+	//Now cache
+	sc.numPrimary = filledLen
+	sc.numSecondary = len(variHashSequence) + len(sc.shapemap)
+	sc.dlxLookupmap = lookupMap
+
 	return
 }
 

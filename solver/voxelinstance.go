@@ -6,7 +6,7 @@ import (
 )
 
 type VoxelInstance struct {
-	//	voxel          *xmpuzzle.Voxel
+	voxel *xmpuzzle.Voxel
 	//	offset         [3]int
 	hotspot        [3]int
 	rotation       uint
@@ -17,7 +17,7 @@ type VoxelInstance struct {
 func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot uint) (vi VoxelInstance) {
 	pvi := new(VoxelInstance)
 	vi = *pvi
-	//	vi.voxel = voxel
+	vi.voxel = voxel
 	vi.rotation = rot
 	/*
 		vi.offset[0] = offset[0]

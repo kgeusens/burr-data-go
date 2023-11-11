@@ -5,7 +5,7 @@ import (
 	"slices"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
-	"github.com/kgeusens/go/burr-data/solver"
+	solver "github.com/kgeusens/go/burr-data/solver"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
@@ -47,4 +47,7 @@ func main() {
 
 	moves := cache.GetMaxValues(0, 0, 1, 0, 0, 1, 1)
 	fmt.Println(*moves)
+
+	dlxMatrix := cache.GetDLXmatrix()
+	fmt.Println(len(*dlxMatrix))
 }

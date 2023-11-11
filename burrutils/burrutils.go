@@ -83,6 +83,9 @@ func RotationsToHash(rotationArray []int) (hash int) {
 	return
 }
 
+/*
+HashToRotations takes a rotation bitmap, and returns the array of rotations
+*/
 func HashToRotations(hash int) (result []int) {
 	for i := 0; i < 24; i++ {
 		if bit := 1 << (i); (hash & bit) > 0 {

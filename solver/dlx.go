@@ -1,5 +1,18 @@
 package solver
 
+import (
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
+)
+
+type row_t []int
+type matrix_t []*row_t
+
+type DLXmatrix_t struct {
+	Matrix       *matrix_t
+	NumPrimary   int
+	NumSecondary int
+}
+
 // This is not a method, just a function taking 2 params
 // https://arxiv.org/pdf/cs/0011047v1.pdf
 // Multiple golang implementations exist.
@@ -15,32 +28,18 @@ package solver
 //
 // The challenge with a map in Golang is that the sequence of iteration is unpredictable
 
-func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []int) {
+/*
+GetDLXrow returns a single DLX row for a rotated and translated shape.
+The shape is identified by its id, rotation, and offset relative to the result
+*/
+func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result row_t) {
 	// Get the worldmap of the resultvoxel
 	r := sc.GetResultInstance()
 	resmap := *(r.GetWorldmap())
 	// Get a clone of the worldmap of the shape and translate it
 	piecemap := sc.GetShapeInstance(shapeid, rotid).GetWorldmap().Clone()
 	piecemap.Translate(x, y, z)
-	// Baseline the resmap by creating 2 arrays:
-	// one for the filled pixels, and one for the vari pixels
-	var filledHashSequence, variHashSequence [][3]int
-	for key := range resmap {
-		if resmap.Value(key) == 1 {
-			filledHashSequence = append(filledHashSequence, resmap.Position(key))
-		} else {
-			variHashSequence = append(variHashSequence, resmap.Position(key))
-		}
-	}
-	// create a lookupmap for performance
-	filledLen := len(filledHashSequence)
-	lookupMap := make(map[[3]int]int)
-	for idx, pos := range filledHashSequence {
-		lookupMap[pos] = idx
-	}
-	for idx, pos := range variHashSequence {
-		lookupMap[pos] = idx + filledLen
-	}
+	lookupMap := sc.dlxLookupmap
 	// filled and vari now contain the positions of the filled and variable pixels of the puzzle
 	// We do this now for every call, we can speed things up if we do this once when we create the
 	// full DLX matrix at time of "solve"
@@ -59,6 +58,42 @@ func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result []in
 	return
 }
 
-func (sc SolverCache_t) GetDLXMatrix() (res [][]int) {
-	return
+func (sc SolverCache_t) GetDLXmatrix() *matrix_t {
+	matrix := make(matrix_t, 0)
+	// calculate rotaionLists
+	rotationLists := make([]int, sc.idSize)
+	r := sc.GetResultInstance()
+	rbb := r.GetBoundingbox()
+	for psid := range sc.shapemap {
+		voxel := sc.GetShapeInstance(uint(psid), 0).voxel
+		symgroupID := voxel.CalcSelfSymmetries()
+		rotlist := burrutils.RotationsToCheck[symgroupID]
+		rotationLists[psid] = rotlist // need to copy??
+		// need to imlplement breaker logic here
+	}
+	//
+	// now start building the DLX matrix
+
+	for psid := range sc.shapemap {
+		rotlist := burrutils.HashToRotations(rotationLists[psid])
+		for _, rotidx := range rotlist {
+			rotatedInstance := sc.GetShapeInstance(uint(psid), uint(rotidx))
+			pbb := rotatedInstance.GetBoundingbox()
+
+			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
+				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
+					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
+						row := sc.GetDLXrow(uint(psid), uint(rotidx), x, y, z)
+						if len(row) > 0 {
+							matrix = append(matrix, &row)
+							// KG: Now track the metadata for this row somewhere too
+						}
+					}
+				}
+			}
+
+		}
+	}
+
+	return &matrix
 }

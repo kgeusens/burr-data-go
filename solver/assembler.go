@@ -1,8 +1,12 @@
 package solver
 
-func (sc SolverCache_t) GetDLXmatrix() {
-	// get an instance of the resultvoxel
-	//	r := NewVoxelinstance(sc.resultVoxel, 0)
-	//	rbb := r.GetBoundingbox()
+/*
+import (
+	dlx "github.com/Kappeh/dlx"
+)
 
+func (sc SolverCache_t) assemble() {
+	dlxMatrix := sc.GetDLXmatrix()
+	dummy, err := dlx.New(7, 0)
 }
+*/

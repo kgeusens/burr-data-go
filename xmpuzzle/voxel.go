@@ -109,8 +109,15 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 		// continue to the next
 		next++
 	}
-
-	return
+	// we need to return the ID of the symmetrygroup, not the group itself
+	idx := -1
+	for i := range burrutils.SymmetryGroups {
+		if burrutils.SymmetryGroups[i] == symmetryMatrix {
+			idx = i
+			break
+		}
+	}
+	return idx
 }
 
 func (v *Voxel) NewWorldmap() Worldmap {
