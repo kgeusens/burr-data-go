@@ -12,8 +12,8 @@ func (sc SolverCache_t) assemble() (solutions [][]int) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, row := range *tempMatrix {
-		err := dlx.AddRow(dlxMatrix, *row...)
+	for _, entry := range *tempMatrix {
+		err := dlx.AddRow(dlxMatrix, *entry.row...)
 		if err != nil {
 			log.Fatal(err)
 		}

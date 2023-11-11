@@ -7,7 +7,6 @@ import (
 )
 
 type row_t []int
-type matrix_t []*row_t
 
 type annotation_t struct {
 	shapeID  int
@@ -15,6 +14,13 @@ type annotation_t struct {
 	hotspot  [3]int
 	offset   [3]int
 }
+
+type matrixEntry_t struct {
+	row        *row_t
+	annotation annotation_t
+}
+
+type matrix_t []*matrixEntry_t
 
 // This is not a method, just a function taking 2 params
 // https://arxiv.org/pdf/cs/0011047v1.pdf
@@ -62,14 +68,13 @@ func (sc SolverCache_t) calcDLXrow(shapeid, rotid uint, x, y, z int) (result row
 	return
 }
 
-func (sc SolverCache_t) calcDLXmatrix() (*matrix_t, *[]annotation_t) {
+func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 	/*
 		Challenge: how to annotate the rows? One idea is to keep a separate array of same length as
 		the solutions matrix, and store the annotations there
 	*/
 
 	matrix := make(matrix_t, 0)
-	annotations := []annotation_t{}
 	// calculate rotaionLists
 	rotationLists := make([]int, sc.idSize)
 	r := sc.GetResultInstance()
@@ -121,8 +126,7 @@ func (sc SolverCache_t) calcDLXmatrix() (*matrix_t, *[]annotation_t) {
 					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
 						row := sc.calcDLXrow(uint(psid), uint(rotidx), x, y, z)
 						if len(row) > 0 {
-							matrix = append(matrix, &row)
-							annotations = append(annotations, annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}})
+							matrix = append(matrix, &matrixEntry_t{&row, annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}}})
 						}
 					}
 				}
@@ -131,12 +135,12 @@ func (sc SolverCache_t) calcDLXmatrix() (*matrix_t, *[]annotation_t) {
 		}
 	}
 
-	return &matrix, &annotations
+	return &matrix
 }
 
 func (sc *SolverCache_t) GetDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {
-		sc.dlxMatrixCache, sc.dlxAnnotationsCache = sc.calcDLXmatrix()
+		sc.dlxMatrixCache = sc.calcDLXmatrix()
 	}
 	return sc.dlxMatrixCache
 }
