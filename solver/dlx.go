@@ -17,7 +17,7 @@ type annotation_t struct {
 
 type matrixEntry_t struct {
 	row        *row_t
-	annotation annotation_t
+	annotation *annotation_t
 }
 
 type matrix_t []*matrixEntry_t
@@ -126,7 +126,7 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
 						row := sc.calcDLXrow(uint(psid), uint(rotidx), x, y, z)
 						if len(row) > 0 {
-							matrix = append(matrix, &matrixEntry_t{&row, annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}}})
+							matrix = append(matrix, &matrixEntry_t{&row, &annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}}})
 						}
 					}
 				}
@@ -138,7 +138,7 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 	return &matrix
 }
 
-func (sc *SolverCache_t) GetDLXmatrix() *matrix_t {
+func (sc *SolverCache_t) getDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {
 		sc.dlxMatrixCache = sc.calcDLXmatrix()
 	}

@@ -29,7 +29,7 @@ type SolverCache_t struct {
 	instanceCache  map[uint]*VoxelInstance
 	movementCache  map[uint64]*maxVal_t
 	dlxMatrixCache *matrix_t
-	assemblyCache  [][]int
+	assemblyCache  [][]*annotation_t
 	dlxLookupmap   map[[3]int]int
 }
 

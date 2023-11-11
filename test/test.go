@@ -34,5 +34,6 @@ func main() {
 
 	assemblies := cache.GetAssemblies()
 	fmt.Println(len(assemblies))
+	fmt.Println(*assemblies[0][2])
 
 }
