@@ -18,19 +18,20 @@ Informations is either calculated and cached at time of creation,
 or dynamically at time of consultation (and then cached for future).
 */
 type SolverCache_t struct {
-	puzzle         *xmpuzzle.Puzzle
-	problemIndex   uint
-	idSize         uint
-	numPrimary     int
-	numSecondary   int
-	shapemap       []uint8
-	resultVoxel    *xmpuzzle.Voxel
-	resultInstance *VoxelInstance
-	instanceCache  map[uint]*VoxelInstance
-	movementCache  map[uint64]*maxVal_t
-	dlxMatrixCache *matrix_t
-	assemblyCache  [][]int
-	dlxLookupmap   map[[3]int]int
+	puzzle              *xmpuzzle.Puzzle
+	problemIndex        uint
+	idSize              uint
+	numPrimary          int
+	numSecondary        int
+	shapemap            []uint8
+	resultVoxel         *xmpuzzle.Voxel
+	resultInstance      *VoxelInstance
+	instanceCache       map[uint]*VoxelInstance
+	movementCache       map[uint64]*maxVal_t
+	dlxMatrixCache      *matrix_t
+	dlxAnnotationsCache *[]annotation_t
+	assemblyCache       [][]int
+	dlxLookupmap        map[[3]int]int
 }
 
 /*

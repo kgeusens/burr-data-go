@@ -16,12 +16,6 @@ type annotation_t struct {
 	offset   [3]int
 }
 
-type DLXmatrix_t struct {
-	Matrix       *matrix_t
-	NumPrimary   int
-	NumSecondary int
-}
-
 // This is not a method, just a function taking 2 params
 // https://arxiv.org/pdf/cs/0011047v1.pdf
 // Multiple golang implementations exist.
@@ -68,7 +62,7 @@ func (sc SolverCache_t) calcDLXrow(shapeid, rotid uint, x, y, z int) (result row
 	return
 }
 
-func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
+func (sc SolverCache_t) calcDLXmatrix() (*matrix_t, *[]annotation_t) {
 	/*
 		Challenge: how to annotate the rows? One idea is to keep a separate array of same length as
 		the solutions matrix, and store the annotations there
@@ -129,7 +123,6 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 						if len(row) > 0 {
 							matrix = append(matrix, &row)
 							annotations = append(annotations, annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}})
-							// KG: Now track the metadata for this row somewhere too
 						}
 					}
 				}
@@ -138,12 +131,12 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 		}
 	}
 
-	return &matrix
+	return &matrix, &annotations
 }
 
 func (sc *SolverCache_t) GetDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {
-		sc.dlxMatrixCache = sc.calcDLXmatrix()
+		sc.dlxMatrixCache, sc.dlxAnnotationsCache = sc.calcDLXmatrix()
 	}
 	return sc.dlxMatrixCache
 }
