@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"slices"
 
-	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	solver "github.com/kgeusens/go/burr-data/solver"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
@@ -32,22 +30,9 @@ func main() {
 	fmt.Println(p)
 	fmt.Println()
 
-	syms := puzzle.Shapes[8].CalcSelfSymmetries()
-	fmt.Println(burrutils.HashToRotations(syms))
-
-	//fmt.Println(solver.NewVoxelinstance(&puzzle.Shapes[4], 0).GetWorldmap())
-
 	cache := solver.NewSolverCache(&puzzle, 0)
-	dlx := cache.GetDLXrow(4, 0, 0, 0, 0)
-	slices.Sort(dlx)
-	fmt.Println(len(dlx))
-	fmt.Println(dlx)
-	pinstance := cache.GetShapeInstance(4, 8)
-	fmt.Println(*pinstance.GetWorldmap())
 
-	moves := cache.GetMaxValues(0, 0, 1, 0, 0, 1, 1)
-	fmt.Println(*moves)
+	assemblies := cache.GetAssemblies()
+	fmt.Println(len(assemblies))
 
-	dlxMatrix := cache.GetDLXmatrix()
-	fmt.Println(len(*dlxMatrix))
 }

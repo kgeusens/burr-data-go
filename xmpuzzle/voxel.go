@@ -40,13 +40,24 @@ func (v Voxel) GetVoxelState(x, y, z uint) (state int8) {
 	return
 }
 
-func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
+/*
+CalcSelfSymmetries calculates the rotations that for which a voxel is symmetric.
+
+# Params
+
+none
+
+# Result
+
+symgroupID int: number from 0 to 29 (the id of the symmetrygroup)
+*/
+func (v Voxel) CalcSelfSymmetries() (symgroupID int) {
 	rotSequence := [16]uint{1, 4, 10, 2, 8, 16, 5, 7, 13, 15, 6, 9, 11, 14, 18, 22}
 	wm := v.NewWorldmap()
 	bb := wm.CalcBoundingbox()
 	bbX, bbY, bbZ := bb.Size()
 
-	symmetryMatrix = 1 // rotation 0
+	symmetryMatrix := 1 // rotation 0
 	rbb := NewBoundingbox()
 	next := 1
 	rotidx := uint(0)
@@ -110,14 +121,14 @@ func (v Voxel) CalcSelfSymmetries() (symmetryMatrix int) {
 		next++
 	}
 	// we need to return the ID of the symmetrygroup, not the group itself
-	idx := -1
+	symgroupID = -1
 	for i := range burrutils.SymmetryGroups {
 		if burrutils.SymmetryGroups[i] == symmetryMatrix {
-			idx = i
+			symgroupID = i
 			break
 		}
 	}
-	return idx
+	return symgroupID
 }
 
 func (v *Voxel) NewWorldmap() Worldmap {

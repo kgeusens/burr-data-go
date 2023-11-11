@@ -1,11 +1,20 @@
 package solver
 
 import (
+	"slices"
+
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
 type row_t []int
 type matrix_t []*row_t
+
+type annotation_t struct {
+	shapeID  int
+	rotation int
+	hotspot  [3]int
+	offset   [3]int
+}
 
 type DLXmatrix_t struct {
 	Matrix       *matrix_t
@@ -29,10 +38,10 @@ type DLXmatrix_t struct {
 // The challenge with a map in Golang is that the sequence of iteration is unpredictable
 
 /*
-GetDLXrow returns a single DLX row for a rotated and translated shape.
+calcDLXrow returns a single DLX row for a rotated and translated shape.
 The shape is identified by its id, rotation, and offset relative to the result
 */
-func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result row_t) {
+func (sc SolverCache_t) calcDLXrow(shapeid, rotid uint, x, y, z int) (result row_t) {
 	// Get the worldmap of the resultvoxel
 	r := sc.GetResultInstance()
 	resmap := *(r.GetWorldmap())
@@ -55,21 +64,54 @@ func (sc SolverCache_t) GetDLXrow(shapeid, rotid uint, x, y, z int) (result row_
 	// Finally we need to add the optional column for the piece (regardless of rotation)
 	// This is at index "(size of resultvoxel) + pieceID"
 	result = append(result, resmap.Size()+int(shapeid))
+	slices.Sort(result)
 	return
 }
 
-func (sc SolverCache_t) GetDLXmatrix() *matrix_t {
+func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
+	/*
+		Challenge: how to annotate the rows? One idea is to keep a separate array of same length as
+		the solutions matrix, and store the annotations there
+	*/
+
 	matrix := make(matrix_t, 0)
+	annotations := []annotation_t{}
 	// calculate rotaionLists
 	rotationLists := make([]int, sc.idSize)
 	r := sc.GetResultInstance()
 	rbb := r.GetBoundingbox()
+	rsymgroupID := r.voxel.CalcSelfSymmetries()
+	breakerID := -1
+	breakerSize := 30000
+	voxelSize := 0
+	breakerReduction := 0
 	for psid := range sc.shapemap {
-		voxel := sc.GetShapeInstance(uint(psid), 0).voxel
+		instance := sc.GetShapeInstance(uint(psid), 0)
+		voxel := instance.voxel
+		voxelSize = instance.cachedWorldmap.Size()
 		symgroupID := voxel.CalcSelfSymmetries()
 		rotlist := burrutils.RotationsToCheck[symgroupID]
-		rotationLists[psid] = rotlist // need to copy??
+		rotationLists[psid] = rotlist // no need to copy, this is just an integer bitmap
 		// need to imlplement breaker logic here
+		reducedRotlist := burrutils.ReduceRotations(rsymgroupID, rotlist)
+		rotlistLength := burrutils.BitmapSize(rotlist)
+		reducedRotlistLength := burrutils.BitmapSize(reducedRotlist)
+
+		if (rotlistLength - reducedRotlistLength) >= breakerReduction {
+			if (rotlistLength - reducedRotlistLength) == breakerReduction {
+				if voxelSize < breakerSize {
+					breakerSize = voxelSize
+					breakerID = psid
+				}
+			} else {
+				breakerID = psid
+				breakerReduction = rotlistLength - reducedRotlistLength
+			}
+		}
+	}
+	// reduce the breaker
+	if breakerID >= 0 {
+		rotationLists[breakerID] = burrutils.ReduceRotations(rsymgroupID, rotationLists[breakerID])
 	}
 	//
 	// now start building the DLX matrix
@@ -83,9 +125,10 @@ func (sc SolverCache_t) GetDLXmatrix() *matrix_t {
 			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
 				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
 					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
-						row := sc.GetDLXrow(uint(psid), uint(rotidx), x, y, z)
+						row := sc.calcDLXrow(uint(psid), uint(rotidx), x, y, z)
 						if len(row) > 0 {
 							matrix = append(matrix, &row)
+							annotations = append(annotations, annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}})
 							// KG: Now track the metadata for this row somewhere too
 						}
 					}
@@ -96,4 +139,11 @@ func (sc SolverCache_t) GetDLXmatrix() *matrix_t {
 	}
 
 	return &matrix
+}
+
+func (sc *SolverCache_t) GetDLXmatrix() *matrix_t {
+	if sc.dlxMatrixCache == nil {
+		sc.dlxMatrixCache = sc.calcDLXmatrix()
+	}
+	return sc.dlxMatrixCache
 }

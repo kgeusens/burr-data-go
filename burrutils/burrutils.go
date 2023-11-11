@@ -59,7 +59,19 @@ var SymmetryGroups [30]int = [30]int{
 
 /*
 RotationsToCheck translates a SymmetryGroup into "the rotations that need to be checked by the solver"
-It has the same number of elements as SymmetryGroups, so entry X corresponds to SymmetryGroup[X]
+It has the same number of elements as SymmetryGroups, so entry X corresponds to SymmetryGroup[X].
+
+# Params
+
+	symgroupID int
+		number from 0 to 29 (the id of the symmetrygroup)
+
+# Result
+
+	bitmap int
+		The bitmap of rotations that are part of the symmetrygroup
+
+The value is a bitmap of rotations.
 */
 var RotationsToCheck [30]int = [30]int{
 	16777215, 3355443, 1118481, 43967,
@@ -100,8 +112,19 @@ ReduceRotations is a helperfunction for the solver.
 It takes the "rotations to check" for a piece, and then
 eliminates the rotations that result from a second rotation
 over the symmetries of the result voxel.
-*/
 
+# Params
+
+	symgroupID int
+		number from 0 to 29 (the id of the symmetrygroup)
+	rotgroupBitmap int
+		the bitmap of rotations to reduce
+
+# Result
+
+	resultBitmap int
+		The bitmap representing the reduced rotgroupBitmap
+*/
 func ReduceRotations(symgroupID int, rotgroupBitmap int) (resultBitmap int) {
 	symGroup := SymmetryGroups[symgroupID]
 	symmetryMembers := HashToRotations(symGroup)
@@ -114,7 +137,7 @@ func ReduceRotations(symgroupID int, rotgroupBitmap int) (resultBitmap int) {
 				sym := symmetryMembers[idx]
 				res := doubleRotations[sym+24*rot]
 				// flag the doublerotations (bit "res") in skipMatrix
-				skipMatrix = (skipMatrix & (1 << res))
+				skipMatrix = skipMatrix | (1 << res)
 			}
 		}
 	}
@@ -122,6 +145,28 @@ func ReduceRotations(symgroupID int, rotgroupBitmap int) (resultBitmap int) {
 	// invert the skipMatrix
 	resultBitmap = 0x00FFFFFF ^ skipMatrix
 	return
+}
+
+/*
+BitmapSize returns the number of rotations in the bitmap
+
+Params
+
+	bitmap int
+		the bitmap corresponding to a list of rotations
+
+Result
+
+	count int
+		the number of rotations
+*/
+func BitmapSize(bitmap int) (count int) {
+	count = 0
+	for bitmap > 0 {
+		count += bitmap & 1
+		bitmap >>= 1
+	}
+	return count
 }
 
 /*
