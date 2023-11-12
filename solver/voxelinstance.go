@@ -8,13 +8,13 @@ import (
 type VoxelInstance struct {
 	voxel *xmpuzzle.Voxel
 	//	offset         [3]int
-	hotspot        [3]int
-	rotation       uint
+	hotspot        [3]burrutils.Distance_t
+	rotation       burrutils.Id_t
 	cachedWorldmap *xmpuzzle.Worldmap
 	cachedBB       *xmpuzzle.Boundingbox
 }
 
-func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot uint) (vi VoxelInstance) {
+func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot burrutils.Id_t) (vi VoxelInstance) {
 	pvi := new(VoxelInstance)
 	vi = *pvi
 	vi.voxel = voxel
@@ -31,7 +31,7 @@ func NewVoxelinstance(voxel *xmpuzzle.Voxel, rot uint) (vi VoxelInstance) {
 	vi.cachedWorldmap.Rotate(rot)
 	// move to positive quadrant and then translate over offset
 	bb := vi.cachedWorldmap.CalcBoundingbox()
-	trans := [3]int{-1 * bb.Min[0], -1 * bb.Min[1], -1 * bb.Min[2]}
+	trans := [3]burrutils.Distance_t{-1 * bb.Min[0], -1 * bb.Min[1], -1 * bb.Min[2]}
 	vi.cachedWorldmap.Translate(trans[0], trans[1], trans[2])
 	// cache the boundingbox
 	// KG: instead of creating a new boundingbox, consider just translating bb (memory efficiency)

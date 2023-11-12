@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"strings"
+
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
 type GridType struct {
@@ -15,12 +17,12 @@ type GridType struct {
 }
 
 type Shape struct {
-	XMLName xml.Name `xml:"shape"`
-	Id      uint8    `xml:"id,attr"`
-	Count   uint8    `xml:"count,attr"`
-	Min     uint8    `xml:"min,attr"`
-	Max     uint8    `xml:"max,attr"`
-	Group   uint8    `xml:"group,attr"`
+	XMLName xml.Name       `xml:"shape"`
+	Id      burrutils.Id_t `xml:"id,attr"`
+	Count   uint8          `xml:"count,attr"`
+	Min     uint8          `xml:"min,attr"`
+	Max     uint8          `xml:"max,attr"`
+	Group   uint8          `xml:"group,attr"`
 }
 
 type Result struct {

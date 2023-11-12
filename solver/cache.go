@@ -3,10 +3,11 @@ package solver
 import (
 	//	"fmt"
 
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
-type maxVal_t [3]int16
+type maxVal_t [3]burrutils.Distance_t
 
 /*
 SolverCache_t
@@ -23,14 +24,14 @@ type SolverCache_t struct {
 	idSize         uint
 	numPrimary     int
 	numSecondary   int
-	shapemap       []uint8
+	shapemap       []burrutils.Id_t
 	resultVoxel    *xmpuzzle.Voxel
 	resultInstance *VoxelInstance
 	instanceCache  map[uint]*VoxelInstance
 	movementCache  map[uint64]*maxVal_t
 	dlxMatrixCache *matrix_t
 	assemblyCache  [][]*annotation_t
-	dlxLookupmap   map[[3]int]int
+	dlxLookupmap   map[maxVal_t]int
 }
 
 /*
@@ -59,7 +60,7 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	resmap := *(resi.GetWorldmap())
 	// Baseline the resmap by creating 2 arrays:
 	// one for the filled pixels, and one for the vari pixels
-	var filledHashSequence, variHashSequence [][3]int
+	var filledHashSequence, variHashSequence []maxVal_t
 	for key := range resmap {
 		if resmap.Value(key) == 1 {
 			filledHashSequence = append(filledHashSequence, resmap.Position(key))
@@ -69,7 +70,7 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	}
 	// create a lookupmap for performance
 	filledLen := len(filledHashSequence)
-	lookupMap := make(map[[3]int]int)
+	lookupMap := make(map[maxVal_t]int)
 	for idx, pos := range filledHashSequence {
 		lookupMap[pos] = idx
 	}
@@ -96,9 +97,9 @@ func (sc SolverCache_t) GetNumSecondary() int {
 	return sc.numSecondary
 }
 
-func (sc *SolverCache_t) GetShapeInstance(id, rot uint) (vi *VoxelInstance) {
+func (sc *SolverCache_t) GetShapeInstance(id, rot burrutils.Id_t) (vi *VoxelInstance) {
 	// hash is based on 24 max rotations
-	hash := id*24 + rot
+	hash := uint(id)*24 + uint(rot)
 	vi = sc.instanceCache[hash]
 	if vi == nil {
 		instance := NewVoxelinstance(&sc.puzzle.Shapes[sc.shapemap[id]], rot)
@@ -115,16 +116,16 @@ func (sc SolverCache_t) GetResultInstance() (vi *VoxelInstance) {
 /*
 Calculate a unique uint64 hashvalue for movements
 */
-func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 uint, dx, dy, dz int) (hash uint64) {
+func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
 	bigid1 := uint64(id1)
 	bigrot1 := uint64(rot1)
 	bigid2 := uint64(id2)
 	bigrot2 := uint64(rot2)
-	hash = (((bigid1*24+bigrot1)*uint64(sc.idSize)+bigid2)*24+bigrot2)*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(dz*int(worldMax)+dy)+dx)
+	hash = (((bigid1*24+bigrot1)*uint64(sc.idSize)+bigid2)*24+bigrot2)*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
 	return
 }
 
-func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int) (pmoves *maxVal_t) {
+func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (pmoves *maxVal_t) {
 	hash := sc.CalcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
 	pmoves = sc.movementCache[hash]
 	if pmoves == nil {
@@ -139,9 +140,9 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 		bb2 := s2.GetBoundingbox()
 		s1wm := s1.GetWorldmap()
 		s2wm := s2.GetWorldmap()
-		mx := int16(32000)
-		my := int16(32000)
-		mz := int16(32000)
+		mx := burrutils.Distance_t(32000)
+		my := burrutils.Distance_t(32000)
+		mz := burrutils.Distance_t(32000)
 		imin := &intersection.Min
 		imax := &intersection.Max
 		umin := &union.Min
@@ -158,7 +159,7 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 		umax[0] = max(bb1.Max[0], bb2.Max[0]+dx)
 		umax[1] = max(bb1.Max[1], bb2.Max[1]+dy)
 		umax[2] = max(bb1.Max[2], bb2.Max[2]+dz)
-		var gap int16
+		var gap burrutils.Distance_t
 		yStart := imin[1]
 		yStop := imax[1]
 		zStart := imin[2]
@@ -169,9 +170,9 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 			for z := zStart; z <= zStop; z++ {
 				gap = 32000
 				for x := xStart; x <= xStop; x++ {
-					if s1wm.Has([3]int{x, y, z}) {
+					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
-					} else if s2wm.Has([3]int{x - dx, y - dy, z - dz}) {
+					} else if s2wm.Has([3]burrutils.Distance_t{x - dx, y - dy, z - dz}) {
 						if gap < mx {
 							mx = gap
 						}
@@ -191,9 +192,9 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 			for z := zStart; z <= zStop; z++ {
 				gap = 32000
 				for y := yStart; y <= yStop; y++ {
-					if s1wm.Has([3]int{x, y, z}) {
+					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
-					} else if s2wm.Has([3]int{x - dx, y - dy, z - dz}) {
+					} else if s2wm.Has([3]burrutils.Distance_t{x - dx, y - dy, z - dz}) {
 						if gap < my {
 							my = gap
 						}
@@ -213,9 +214,9 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 			for y := yStart; y <= yStop; y++ {
 				gap = 32000
 				for z := zStart; z <= zStop; z++ {
-					if s1wm.Has([3]int{x, y, z}) {
+					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
-					} else if s2wm.Has([3]int{x - dx, y - dy, z - dz}) {
+					} else if s2wm.Has([3]burrutils.Distance_t{x - dx, y - dy, z - dz}) {
 						if gap < mz {
 							mz = gap
 						}
@@ -231,3 +232,44 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 uint, dx, dy, dz int)
 	}
 	return
 }
+
+/*
+func (sc *SolverCache_t) getMovevementList(pthis, node *node_t) {
+
+}
+*/
+
+/*
+func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]int16) {
+	nPieces := len(node.root.rootDetails.pieceList)
+	// KG: sotring and reusing matrix from the cache can probably save a lot of GC effort
+	m := make([]int16, nPieces*nPieces*3)
+	matrix = &m
+	//	numRow := nPieces * 3
+	for j := 0; j < nPieces; j++ {
+		for i := 0; i < nPieces; i++ {
+			// diagonal is 0
+			if i == j {
+				m[j*nPieces*3+i] = 0
+				m[j*nPieces*3+i+1] = 0
+				m[j*nPieces*3+i+1] = 0
+			} else {
+				s1 := node.root.rootDetails.pieceList[i]
+				r1 := node.root.rootDetails.rotationList[i]
+				o1 := i * 3
+				s2 := node.root.rootDetails.pieceList[j]
+				r2 := node.root.rootDetails.rotationList[j]
+				o2 := j * 3
+				pmoves := sc.GetMaxValues(uint(s1), uint(r1), uint(s2), uint(r2), node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
+				m[j*nPieces*3+i] = pmoves[0]
+				m[j*nPieces*3+i+1] = pmoves[1]
+				m[j*nPieces*3+i+2] = pmoves[2]
+
+			}
+
+		}
+	}
+
+	return
+}
+*/

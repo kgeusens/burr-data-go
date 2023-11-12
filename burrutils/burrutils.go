@@ -1,6 +1,9 @@
 package burrutils
 
-type rotation_t [9]int
+type Id_t uint16
+type Distance_t int16
+type position_t [3]Distance_t
+type rotation_t [9]Distance_t
 
 var rotations [24]rotation_t = [24]rotation_t{
 	{1, 0, 0, 0, 1, 0, 0, 0, 1},
@@ -36,10 +39,10 @@ var RotationToSymmetrygroup [24]int = [24]int{
 Gives the equivalent rotation of 2 successive rotations (rot1 followed by rot2)
 doubleRotationMatrix[rot1*24 + rot2] = rotx = rot1 followed by rot2
 */
-var doubleRotations []int = []int{
+var doubleRotations []Id_t = []Id_t{
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12, 17, 18, 19, 16, 21, 22, 23, 20, 2, 3, 0, 1, 6, 7, 4, 5, 10, 11, 8, 9, 14, 15, 12, 13, 18, 19, 16, 17, 22, 23, 20, 21, 3, 0, 1, 2, 7, 4, 5, 6, 11, 8, 9, 10, 15, 12, 13, 14, 19, 16, 17, 18, 23, 20, 21, 22, 4, 21, 14, 19, 8, 22, 2, 18, 12, 23, 6, 17, 0, 20, 10, 16, 5, 1, 13, 9, 7, 11, 15, 3, 5, 22, 15, 16, 9, 23, 3, 19, 13, 20, 7, 18, 1, 21, 11, 17, 6, 2, 14, 10, 4, 8, 12, 0, 6, 23, 12, 17, 10, 20, 0, 16, 14, 21, 4, 19, 2, 22, 8, 18, 7, 3, 15, 11, 5, 9, 13, 1, 7, 20, 13, 18, 11, 21, 1, 17, 15, 22, 5, 16, 3, 23, 9, 19, 4, 0, 12, 8, 6, 10, 14, 2, 8, 11, 10, 9, 12, 15, 14, 13, 0, 3, 2, 1, 4, 7, 6, 5, 22, 21, 20, 23, 18, 17, 16, 19, 9, 8, 11, 10, 13, 12, 15, 14, 1, 0, 3, 2, 5, 4, 7, 6, 23, 22, 21, 20, 19, 18, 17, 16, 10, 9, 8, 11, 14, 13, 12, 15, 2, 1, 0, 3, 6, 5, 4, 7, 20, 23, 22, 21, 16, 19, 18, 17, 11, 10, 9, 8, 15, 14, 13, 12, 3, 2, 1, 0, 7, 6, 5, 4, 21, 20, 23, 22, 17, 16, 19, 18, 12, 17, 6, 23, 0, 16, 10, 20, 4, 19, 14, 21, 8, 18, 2, 22, 15, 11, 7, 3, 13, 1, 5, 9, 13, 18, 7, 20, 1, 17, 11, 21, 5, 16, 15, 22, 9, 19, 3, 23, 12, 8, 4, 0, 14, 2, 6, 10, 14, 19, 4, 21, 2, 18, 8, 22, 6, 17, 12, 23, 10, 16, 0, 20, 13, 9, 5, 1, 15, 3, 7, 11, 15, 16, 5, 22, 3, 19, 9, 23, 7, 18, 13, 20, 11, 17, 1, 21, 14, 10, 6, 2, 12, 0, 4, 8, 16, 5, 22, 15, 19, 9, 23, 3, 18, 13, 20, 7, 17, 1, 21, 11, 10, 6, 2, 14, 0, 4, 8, 12, 17, 6, 23, 12, 16, 10, 20, 0, 19, 14, 21, 4, 18, 2, 22, 8, 11, 7, 3, 15, 1, 5, 9, 13, 18, 7, 20, 13, 17, 11, 21, 1, 16, 15, 22, 5, 19, 3, 23, 9, 8, 4, 0, 12, 2, 6, 10, 14, 19, 4, 21, 14, 18, 8, 22, 2, 17, 12, 23, 6, 16, 0, 20, 10, 9, 5, 1, 13, 3, 7, 11, 15, 20, 13, 18, 7, 21, 1, 17, 11, 22, 5, 16, 15, 23, 9, 19, 3, 0, 12, 8, 4, 10, 14, 2, 6, 21, 14, 19, 4, 22, 2, 18, 8, 23, 6, 17, 12, 20, 10, 16, 0, 1, 13, 9, 5, 11, 15, 3, 7, 22, 15, 16, 5, 23, 3, 19, 9, 20, 7, 18, 13, 21, 11, 17, 1, 2, 14, 10, 6, 8, 12, 0, 4, 23, 12, 17, 6, 20, 0, 16, 10, 21, 4, 19, 14, 22, 8, 18, 2, 3, 15, 11, 7, 9, 13, 1, 5}
 
-func DoubleRotate(rot1, rot2 int) int {
+func DoubleRotate(rot1, rot2 Id_t) Id_t {
 	return doubleRotations[24*rot1+rot2]
 }
 
@@ -87,7 +90,7 @@ var RotationsToCheck [30]int = [30]int{
 There are 24 rotations possible. We track a group of rotations in a bitmap with 24 bits
 Below are 2 helper functions to convert an array of rotations into a bitmap and reverse
 */
-func RotationsToHash(rotationArray []int) (hash int) {
+func RotationsToHash(rotationArray []Id_t) (hash int) {
 	hash = 0
 	for v := range rotationArray {
 		hash = (hash | (1 << (v)))
@@ -98,8 +101,8 @@ func RotationsToHash(rotationArray []int) (hash int) {
 /*
 HashToRotations takes a rotation bitmap, and returns the array of rotations
 */
-func HashToRotations(hash int) (result []int) {
-	for i := 0; i < 24; i++ {
+func HashToRotations(hash int) (result []Id_t) {
+	for i := Id_t(0); i < 24; i++ {
 		if bit := 1 << (i); (hash & bit) > 0 {
 			result = append(result, i)
 		}
@@ -130,7 +133,7 @@ func ReduceRotations(symgroupID int, rotgroupBitmap int) (resultBitmap int) {
 	symmetryMembers := HashToRotations(symGroup)
 	// initialize skipMatrix to be the inverted rotGroupBitmap
 	skipMatrix := 0x00FFFFFF ^ rotgroupBitmap
-	for rot := 0; rot < 24; rot++ {
+	for rot := Id_t(0); rot < 24; rot++ {
 		if bit := 1 << rot; (skipMatrix & bit) == 0 {
 			// rot is not flagged in the skipMatrix
 			for idx := 1; idx < len(symmetryMembers); idx++ {
@@ -172,7 +175,7 @@ func BitmapSize(bitmap int) (count int) {
 /*
 Rotate and Translate a Worldmap
 */
-func Rotate(x, y, z int, rot uint) (rx, ry, rz int) {
+func Rotate(x, y, z Distance_t, rot Id_t) (rx, ry, rz Distance_t) {
 	rotmat := rotations[rot]
 	rx = x*rotmat[0] + y*rotmat[1] + z*rotmat[2]
 	ry = x*rotmat[3] + y*rotmat[4] + z*rotmat[5]
@@ -180,7 +183,7 @@ func Rotate(x, y, z int, rot uint) (rx, ry, rz int) {
 	return
 }
 
-func Translate(x, y, z, dx, dy, dz int) (rx, ry, rz int) {
+func Translate(x, y, z, dx, dy, dz Distance_t) (rx, ry, rz Distance_t) {
 	rx = x + dx
 	ry = y + dy
 	rz = z + dz

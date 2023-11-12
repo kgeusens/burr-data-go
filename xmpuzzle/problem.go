@@ -2,6 +2,8 @@ package xmpuzzle
 
 import (
 	"encoding/xml"
+
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
 type Problem struct {
@@ -21,7 +23,7 @@ func (p *Problem) NumShapes() int {
 	return len(p.Shapes)
 }
 
-func (p *Problem) GetShapemap() (result []uint8) {
+func (p *Problem) GetShapemap() (result []burrutils.Id_t) {
 	for _, shape := range p.Shapes {
 		count := shape.Count
 		if count == 0 {

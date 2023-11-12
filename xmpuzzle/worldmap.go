@@ -21,7 +21,7 @@ import (
 //const worldSize = worldMax * worldMax * worldMax
 
 type worldmapEntry struct {
-	position [3]int
+	position [3]burrutils.Distance_t
 	value    int8
 }
 
@@ -50,11 +50,11 @@ func (wm Worldmap) Value(idx int) int8 {
 	return wm[idx].value
 }
 
-func (wm Worldmap) Position(idx int) [3]int {
+func (wm Worldmap) Position(idx int) [3]burrutils.Distance_t {
 	return wm[idx].position
 }
 
-func (wm Worldmap) Has(p [3]int) (ok bool) {
+func (wm Worldmap) Has(p [3]burrutils.Distance_t) (ok bool) {
 	for key := range wm {
 		if wm[key].position == p {
 			return true
@@ -67,7 +67,7 @@ func (wm Worldmap) Size() int {
 	return len(wm)
 }
 
-func (wm Worldmap) Translate(x, y, z int) {
+func (wm Worldmap) Translate(x, y, z burrutils.Distance_t) {
 	for key := range wm {
 		wm[key].position[0] += x
 		wm[key].position[1] += y
@@ -75,7 +75,7 @@ func (wm Worldmap) Translate(x, y, z int) {
 	}
 }
 
-func (wm Worldmap) Rotate(rot uint) {
+func (wm Worldmap) Rotate(rot burrutils.Id_t) {
 	for key := range wm {
 		rx, ry, rz := burrutils.Rotate(wm[key].position[0], wm[key].position[1], wm[key].position[2], rot)
 		wm[key].position[0] = rx
@@ -87,7 +87,7 @@ func (wm Worldmap) Rotate(rot uint) {
 func (wm Worldmap) Clone() Worldmap {
 	twm := NewWorldmap()
 	for key := range wm {
-		twm = append(twm, worldmapEntry{[3]int{wm[key].position[0], wm[key].position[1], wm[key].position[2]}, wm[key].value})
+		twm = append(twm, worldmapEntry{[3]burrutils.Distance_t{wm[key].position[0], wm[key].position[1], wm[key].position[2]}, wm[key].value})
 	}
 	return twm
 }

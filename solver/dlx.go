@@ -9,10 +9,10 @@ import (
 type row_t []int
 
 type annotation_t struct {
-	shapeID  int
-	rotation int
-	hotspot  [3]int
-	offset   [3]int
+	shapeID  burrutils.Id_t
+	rotation burrutils.Id_t
+	hotspot  [3]burrutils.Distance_t
+	offset   [3]burrutils.Distance_t
 }
 
 type matrixEntry_t struct {
@@ -41,7 +41,7 @@ type matrix_t []*matrixEntry_t
 calcDLXrow returns a single DLX row for a rotated and translated shape.
 The shape is identified by its id, rotation, and offset relative to the result
 */
-func (sc SolverCache_t) calcDLXrow(shapeid, rotid uint, x, y, z int) (result row_t) {
+func (sc SolverCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burrutils.Distance_t) (result row_t) {
 	// Get the worldmap of the resultvoxel
 	r := sc.GetResultInstance()
 	resmap := *(r.GetWorldmap())
@@ -85,7 +85,7 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 	voxelSize := 0
 	breakerReduction := 0
 	for psid := range sc.shapemap {
-		instance := sc.GetShapeInstance(uint(psid), 0)
+		instance := sc.GetShapeInstance(burrutils.Id_t(psid), 0)
 		voxel := instance.voxel
 		voxelSize = instance.cachedWorldmap.Size()
 		symgroupID := voxel.CalcSelfSymmetries()
@@ -118,15 +118,15 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 	for psid := range sc.shapemap {
 		rotlist := burrutils.HashToRotations(rotationLists[psid])
 		for _, rotidx := range rotlist {
-			rotatedInstance := sc.GetShapeInstance(uint(psid), uint(rotidx))
+			rotatedInstance := sc.GetShapeInstance(burrutils.Id_t(psid), burrutils.Id_t(rotidx))
 			pbb := rotatedInstance.GetBoundingbox()
 
 			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
 				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
 					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
-						row := sc.calcDLXrow(uint(psid), uint(rotidx), x, y, z)
+						row := sc.calcDLXrow(burrutils.Id_t(psid), burrutils.Id_t(rotidx), x, y, z)
 						if len(row) > 0 {
-							matrix = append(matrix, &matrixEntry_t{&row, &annotation_t{psid, rotidx, rotatedInstance.hotspot, [3]int{x, y, z}}})
+							matrix = append(matrix, &matrixEntry_t{&row, &annotation_t{burrutils.Id_t(psid), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}}})
 						}
 					}
 				}
