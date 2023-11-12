@@ -235,12 +235,6 @@ func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 	return
 }
 
-/*
-func (sc *SolverCache_t) getMovevementList(pthis, node *node_t) {
-
-}
-*/
-
 func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Distance_t) {
 	nPieces := len(node.root.rootDetails.pieceList)
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
@@ -312,4 +306,152 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 		}
 	}
 	return
+}
+
+func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
+	// KG: should return an array, or a map, with *node_t as values
+	// the index is not important, but needs to be something we can "pop" from.
+	// Basically, it's the same structure as the "openlist" we will use in the solver,
+	// and that is likely to be an array.
+	matrix := sc.calcCutlerMatrix(node)
+	movelist := []*node_t{}
+
+	nPieces := len(node.root.rootDetails.pieceList)
+
+	// rows first
+	// KG : colapse rows and cols into same logic
+	for dim := 0; dim < 3; dim++ {
+		for k := 0; k < nPieces; k++ {
+			pRow := []burrutils.Id_t{}
+			var vMoveRow burrutils.Distance_t
+			for i := 0; i < nPieces; i++ {
+				vRow := (*matrix)[k*nPieces*3+i*3+dim]
+				if vRow == 0 {
+					pRow = append(pRow, burrutils.Id_t(i))
+				} else {
+					vMoveRow = min(vRow, vMoveRow, maxDistance)
+				}
+			}
+			offset := maxVal_t{0, 0, 0}
+			if vMoveRow > 0 {
+				// we have a partition
+				if len(pRow) <= nPieces/2 {
+					// process separation
+					if vMoveRow >= maxDistance {
+						offset[dim] = -1 * maxDistance
+						// We should be returning an array of new nodes
+						return []*node_t{NewNodeChild(node, pRow, offset, true)}
+					}
+					for step := burrutils.Distance_t(1); step <= vMoveRow; step++ {
+						offset[dim] = -1 * step
+						movelist = append(movelist, NewNodeChild(node, pRow, offset, false))
+					}
+				}
+			}
+		}
+	}
+	// columns next
+	for dim := 0; dim < 3; dim++ {
+		for k := 0; k < nPieces; k++ {
+			pCol := []burrutils.Id_t{}
+			var vMoveCol burrutils.Distance_t
+			for i := 0; i < nPieces; i++ {
+				vCol := (*matrix)[i*nPieces*3+k*3+dim]
+				if vCol == 0 {
+					pCol = append(pCol, burrutils.Id_t(i))
+				} else {
+					vMoveCol = min(vCol, vMoveCol, maxDistance)
+				}
+				offset := maxVal_t{0, 0, 0}
+				if vMoveCol > 0 {
+					// we have a partition
+					if len(pCol) <= nPieces/2 {
+						// process separation
+						if vMoveCol >= maxDistance {
+							offset[dim] = maxDistance
+							// We should be returning an array of new nodes
+							return []*node_t{NewNodeChild(node, pCol, offset, true)}
+						}
+						for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
+							offset[dim] = -1 * step
+							movelist = append(movelist, NewNodeChild(node, pCol, offset, false))
+						}
+					}
+				}
+			}
+		}
+	}
+	return movelist
+}
+
+func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
+	var startNode *node_t
+	startNode = NewNodeFromAssembly(assembly)
+	// parking is an array.
+	// push is the same as parking=append(parking, newnode)
+	// pop is the same as parking=parking[:len(parking)-1]
+	parking := []*node_t{startNode}
+
+	var node *node_t
+	//	var level int
+	closedCache := make(map[string]bool)
+	// adding an entry to closedCache : closedCache[id]=true
+	// checking if entry exists: closedCache[id]
+	separated := false
+	for len(parking) > 0 {
+		// pop from parking
+		startNode = parking[len(parking)-1]
+		parking = parking[:len(parking)-1]
+		curListFront := 0
+		newListFront := 1
+		openlist := [2][]*node_t{{}, {}}
+		separated = false
+
+		closedCache[startNode.GetId()] = true
+		openlist[curListFront] = append(openlist[curListFront], startNode)
+
+		//		level = 1
+		curLength := len(openlist[curListFront])
+		for !(curLength == 0) && !separated {
+			// pop
+			curLength -= 1
+			node = openlist[curListFront][curLength]
+			openlist[curListFront] = openlist[curListFront][:curLength]
+			movesList := sc.getMovevementList(node)
+			var st *node_t
+			movesListLength := len(movesList)
+			for movesListLength != 0 && !separated {
+				// pop
+				movesListLength -= 1
+				st = movesList[movesListLength]
+				movesList = movesList[:movesListLength]
+				if closedCache[st.GetId()] {
+					continue
+				}
+				// never seen this node before, add it to cache
+				closedCache[st.GetId()] = true
+				// check for separation
+				if !st.isSeparation {
+					openlist[newListFront] = append(openlist[newListFront], st)
+					continue
+				} else {
+					// this is a separation, put the sub problems on the parking lot and continue to the next one on the parking
+					separated = true // FLAG STOP TO GO TO NEXT ON PARKING
+					parking = append(parking, node.Separate()...)
+				}
+			}
+			//
+			if len(openlist[curListFront]) == 0 && !separated {
+				curListFront = 1 - curListFront
+				newListFront = 1 - newListFront
+			}
+		}
+		// if we get here, we can check the separated flag to see if it is a dead end, or a separation
+		// if it is a separation, continue to the next on the parking, else return false
+		if !separated {
+			return false
+		}
+	}
+	// SUCCESS
+	return true
 }

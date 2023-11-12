@@ -1,7 +1,9 @@
 package solver
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
@@ -13,8 +15,8 @@ type node_t struct {
 	offsetList      []burrutils.Distance_t
 	movingPieceList []burrutils.Id_t
 	moveDirection   [3]burrutils.Distance_t
-	//	id              string
-	rootDetails *rootDetails_t
+	id              string
+	rootDetails     *rootDetails_t
 }
 
 type rootDetails_t struct {
@@ -121,4 +123,18 @@ func (node *node_t) Separate() []*node_t {
 		}
 	}
 	return newNodes
+}
+
+func (node *node_t) GetId() string {
+	if node.id == "" {
+		var idbuilder strings.Builder
+		nPieces := len(node.root.rootDetails.pieceList)
+		offsetList := node.offsetList
+		idbuilder.WriteString("id")
+		for idx := 0; idx < nPieces; idx++ {
+			idbuilder.WriteString(fmt.Sprintf(" %v %v %v", offsetList[idx*3]-offsetList[0], offsetList[idx*3+1]-offsetList[1], offsetList[idx*3+2]-offsetList[2]))
+		}
+		node.id = idbuilder.String()
+	}
+	return node.id
 }

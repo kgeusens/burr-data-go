@@ -37,5 +37,8 @@ func main() {
 	fmt.Println(*assemblies[0][2])
 	node := solver.NewNodeFromAssembly(&assemblies[0])
 	fmt.Println(node)
-	// fmt.Println(cache.CalcCutlerMatrix(node))
+	mymap := make(map[string]bool)
+	mymap["Koen"] = true
+	fmt.Println(mymap["Koen"])
+	fmt.Println(mymap["Geusens"])
 }
