@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"unsafe"
 
 	solver "github.com/kgeusens/go/burr-data/solver"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
@@ -36,9 +35,7 @@ func main() {
 	assemblies := cache.GetAssemblies()
 	fmt.Println(len(assemblies))
 	fmt.Println(*assemblies[0][2])
-
-	a := [4]uint8{1, 2, 3, 4}
-	b := [4]int{1, 2, 3, 4}
-	fmt.Printf("a: %T, %d\n", a, unsafe.Sizeof(a))
-	fmt.Printf("b: %T, %d\n", b, unsafe.Sizeof(b))
+	node := solver.NewNodeFromAssembly(&assemblies[0])
+	fmt.Println(node)
+	// fmt.Println(cache.CalcCutlerMatrix(node))
 }

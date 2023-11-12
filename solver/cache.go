@@ -9,6 +9,8 @@ import (
 
 type maxVal_t [3]burrutils.Distance_t
 
+const maxDistance = 10000
+
 /*
 SolverCache_t
 
@@ -30,7 +32,7 @@ type SolverCache_t struct {
 	instanceCache  map[uint]*VoxelInstance
 	movementCache  map[uint64]*maxVal_t
 	dlxMatrixCache *matrix_t
-	assemblyCache  [][]*annotation_t
+	assemblyCache  []assembly_t
 	dlxLookupmap   map[maxVal_t]int
 }
 
@@ -116,7 +118,7 @@ func (sc SolverCache_t) GetResultInstance() (vi *VoxelInstance) {
 /*
 Calculate a unique uint64 hashvalue for movements
 */
-func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
+func (sc SolverCache_t) calcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
 	bigid1 := uint64(id1)
 	bigrot1 := uint64(rot1)
 	bigid2 := uint64(id2)
@@ -125,8 +127,8 @@ func (sc SolverCache_t) CalcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx
 	return
 }
 
-func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (pmoves *maxVal_t) {
-	hash := sc.CalcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
+func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (pmoves *maxVal_t) {
+	hash := sc.calcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
 	pmoves = sc.movementCache[hash]
 	if pmoves == nil {
 		pmoves = new(maxVal_t)
@@ -140,9 +142,9 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		bb2 := s2.GetBoundingbox()
 		s1wm := s1.GetWorldmap()
 		s2wm := s2.GetWorldmap()
-		mx := burrutils.Distance_t(32000)
-		my := burrutils.Distance_t(32000)
-		mz := burrutils.Distance_t(32000)
+		mx := burrutils.Distance_t(maxDistance)
+		my := burrutils.Distance_t(maxDistance)
+		mz := burrutils.Distance_t(maxDistance)
 		imin := &intersection.Min
 		imax := &intersection.Max
 		umin := &union.Min
@@ -168,7 +170,7 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		xStop := umax[0]
 		for y := yStart; y <= yStop; y++ {
 			for z := zStart; z <= zStop; z++ {
-				gap = 32000
+				gap = maxDistance
 				for x := xStart; x <= xStop; x++ {
 					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
@@ -190,7 +192,7 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		yStop = umax[1]
 		for x := xStart; x <= xStop; x++ {
 			for z := zStart; z <= zStop; z++ {
-				gap = 32000
+				gap = maxDistance
 				for y := yStart; y <= yStop; y++ {
 					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
@@ -212,7 +214,7 @@ func (sc *SolverCache_t) GetMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		zStop = umax[2]
 		for x := xStart; x <= xStop; x++ {
 			for y := yStart; y <= yStop; y++ {
-				gap = 32000
+				gap = maxDistance
 				for z := zStart; z <= zStop; z++ {
 					if s1wm.Has([3]burrutils.Distance_t{x, y, z}) {
 						gap = 0
@@ -239,11 +241,10 @@ func (sc *SolverCache_t) getMovevementList(pthis, node *node_t) {
 }
 */
 
-/*
-func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]int16) {
+func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Distance_t) {
 	nPieces := len(node.root.rootDetails.pieceList)
-	// KG: sotring and reusing matrix from the cache can probably save a lot of GC effort
-	m := make([]int16, nPieces*nPieces*3)
+	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
+	m := make([]burrutils.Distance_t, nPieces*nPieces*3)
 	matrix = &m
 	//	numRow := nPieces * 3
 	for j := 0; j < nPieces; j++ {
@@ -260,16 +261,55 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]int16) {
 				s2 := node.root.rootDetails.pieceList[j]
 				r2 := node.root.rootDetails.rotationList[j]
 				o2 := j * 3
-				pmoves := sc.GetMaxValues(uint(s1), uint(r1), uint(s2), uint(r2), node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
+				pmoves := sc.getMaxValues(s1, r1, s2, r2, node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
 				m[j*nPieces*3+i] = pmoves[0]
 				m[j*nPieces*3+i+1] = pmoves[1]
 				m[j*nPieces*3+i+2] = pmoves[2]
-
 			}
-
 		}
 	}
-
+	// Phase 2: algorithm from Bill Cutler
+	again := true
+	for again {
+		again = false
+		for j := 0; j < nPieces; j++ {
+			for i := 0; i < nPieces; i++ {
+				if i == j {
+					continue
+				}
+				for k := 0; k < nPieces; k++ {
+					if k == j {
+						continue
+					}
+					ijStart := j*nPieces*3 + i*3
+					ikStart := k*nPieces*3 + i*3
+					kjStart := j*nPieces*3 + k*3
+					for dim := 0; dim < 3; dim++ {
+						min := m[ikStart+dim] + m[kjStart+dim]
+						if min < m[ijStart+dim] {
+							m[ijStart+dim] = min
+							// optimize: check if this update impacts already updated values
+							if !again {
+								for a := 0; a < i; a++ {
+									if m[j*nPieces*3+a*3+dim] > m[i*nPieces*3+a*3+dim]+m[ijStart+dim] {
+										again = true
+										break
+									}
+								}
+							}
+							if !again {
+								for b := 0; b < j; b++ {
+									if m[b*nPieces*3+i*3+dim] > m[b*nPieces*3+j*3+dim]+m[ijStart+dim] {
+										again = true
+										break
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 	return
 }
-*/

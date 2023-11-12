@@ -6,7 +6,9 @@ import (
 	dlx "github.com/Kappeh/dlx"
 )
 
-func (sc SolverCache_t) assemble() (solutions [][]*annotation_t) {
+type assembly_t []*annotation_t
+
+func (sc SolverCache_t) assemble() (solutions []assembly_t) {
 	tempMatrix := sc.getDLXmatrix()
 	dlxMatrix, err := dlx.New(sc.GetNumPrimary(), sc.GetNumSecondary())
 	if err != nil {
@@ -30,7 +32,11 @@ func (sc SolverCache_t) assemble() (solutions [][]*annotation_t) {
 	return solutions
 }
 
-func (sc *SolverCache_t) GetAssemblies() [][]*annotation_t {
+/*
+GetAssemblies returns an array of the possible assemblies of the problem (represented by this cache)
+GetAssemblies[x] returns assembly number x
+*/
+func (sc *SolverCache_t) GetAssemblies() []assembly_t {
 	if sc.assemblyCache == nil {
 		sc.assemblyCache = sc.assemble()
 	}

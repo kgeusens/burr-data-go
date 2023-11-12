@@ -1,6 +1,5 @@
 package solver
 
-/*
 import (
 	"slices"
 
@@ -47,10 +46,11 @@ func NewNodeChild(parent *node_t, movingPieceList []burrutils.Id_t, translation 
 	return
 }
 
-func NewNodeFromAssembly(passembly *[]*annotation_t) (root *node_t) {
+func NewNodeFromAssembly(passembly *assembly_t) *node_t {
 	assembly := *passembly
-	root = new(node_t)
-	root.rootDetails = &rootDetails_t{[]int{}, []int{}, []int{}}
+	root := new(node_t)
+	root.root = root
+	root.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 	// loop over the shape annotations
 	for _, v := range assembly {
 		root.rootDetails.pieceList = append(root.rootDetails.pieceList, v.shapeID)
@@ -58,7 +58,7 @@ func NewNodeFromAssembly(passembly *[]*annotation_t) (root *node_t) {
 		root.rootDetails.hotspotList = append(root.rootDetails.hotspotList, v.hotspot[0], v.hotspot[1], v.hotspot[2])
 		root.offsetList = append(root.offsetList, v.offset[0], v.offset[1], v.offset[2])
 	}
-	return
+	return root
 }
 
 func (node *node_t) Separate() []*node_t {
@@ -70,23 +70,23 @@ func (node *node_t) Separate() []*node_t {
 			// so at this point, we know we are a separation
 			// movingPieceList and movingDirection tells us what to work with
 			newRoot := new(node_t)
-			newRoot.rootDetails = &rootDetails_t{[]int{}, []int{}, []int{}}
+			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 			newRoot.parent = node
 			newRoot.root = newRoot
-			newRoot.offsetList = []int{}
+			newRoot.offsetList = []burrutils.Distance_t{}
 			// only keep the pieces that are not moving. Filter out the moving pieces
 			for i, v := range node.root.rootDetails.pieceList {
-				if !slices.Contains(node.movingPieceList, i) {
+				if !slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
 					newRoot.rootDetails.pieceList = append(newRoot.rootDetails.pieceList, v)
 				}
 			}
 			for i, v := range node.root.rootDetails.rotationList {
-				if !slices.Contains(node.movingPieceList, i) {
+				if !slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
 					newRoot.rootDetails.rotationList = append(newRoot.rootDetails.rotationList, v)
 				}
 			}
 			for idx := 0; idx < nPieces; idx++ {
-				if !slices.Contains(node.movingPieceList, idx) {
+				if !slices.Contains(node.movingPieceList, burrutils.Id_t(idx)) {
 					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.rootDetails.hotspotList[idx*3], node.rootDetails.hotspotList[idx*3+1], node.rootDetails.hotspotList[idx*3+2])
 					newRoot.offsetList = append(newRoot.offsetList, node.offsetList[idx*3], node.offsetList[idx*3+1], node.offsetList[idx*3+2])
 				}
@@ -96,23 +96,23 @@ func (node *node_t) Separate() []*node_t {
 		if len(node.movingPieceList) > 1 {
 			// This is normally the smallest partition
 			newRoot := new(node_t)
-			newRoot.rootDetails = &rootDetails_t{[]int{}, []int{}, []int{}}
+			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 			newRoot.parent = node
 			newRoot.root = newRoot
-			newRoot.offsetList = []int{}
+			newRoot.offsetList = []burrutils.Distance_t{}
 			// only keep the pieces that are not moving. Filter out the moving pieces
 			for i, v := range node.root.rootDetails.pieceList {
-				if slices.Contains(node.movingPieceList, i) {
+				if slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
 					newRoot.rootDetails.pieceList = append(newRoot.rootDetails.pieceList, v)
 				}
 			}
 			for i, v := range node.root.rootDetails.rotationList {
-				if slices.Contains(node.movingPieceList, i) {
+				if slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
 					newRoot.rootDetails.rotationList = append(newRoot.rootDetails.rotationList, v)
 				}
 			}
 			for idx := 0; idx < nPieces; idx++ {
-				if slices.Contains(node.movingPieceList, idx) {
+				if slices.Contains(node.movingPieceList, burrutils.Id_t(idx)) {
 					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.rootDetails.hotspotList[idx*3], node.rootDetails.hotspotList[idx*3+1], node.rootDetails.hotspotList[idx*3+2])
 					newRoot.offsetList = append(newRoot.offsetList, node.offsetList[idx*3], node.offsetList[idx*3+1], node.offsetList[idx*3+2])
 				}
@@ -122,4 +122,3 @@ func (node *node_t) Separate() []*node_t {
 	}
 	return newNodes
 }
-*/
