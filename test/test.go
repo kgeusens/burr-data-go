@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	xmlstring, err := xmpuzzle.ReadFile("./two face 3.xmpuzzle")
+	xmlstring, err := xmpuzzle.ReadFile("./Misused Key.xmpuzzle")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -21,15 +21,6 @@ func main() {
 		fmt.Println(v)
 	}
 
-	r := puzzle.Shapes[8].NewWorldmap()
-	p := puzzle.Shapes[4].NewWorldmap()
-	fmt.Println(len(r))
-	fmt.Println(r)
-	fmt.Println()
-	fmt.Println(len(p))
-	fmt.Println(p)
-	fmt.Println()
-
 	cache := solver.NewSolverCache(&puzzle, 0)
 
 	assemblies := cache.GetAssemblies()
@@ -37,8 +28,12 @@ func main() {
 	fmt.Println(*assemblies[0][2])
 	node := solver.NewNodeFromAssembly(&assemblies[0])
 	fmt.Println(node)
-	mymap := make(map[string]bool)
-	mymap["Koen"] = true
-	fmt.Println(mymap["Koen"])
-	fmt.Println(mymap["Geusens"])
+
+	cache.Solve(&assemblies[0])
+
+	for i, a := range assemblies {
+		if cache.Solve(&a) {
+			fmt.Println("Solution found at ", i)
+		}
+	}
 }

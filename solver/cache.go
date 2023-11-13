@@ -1,15 +1,13 @@
 package solver
 
 import (
-	//	"fmt"
-
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
 type maxVal_t [3]burrutils.Distance_t
 
-const maxDistance = 10000
+const maxDistance = burrutils.Distance_t(10000)
 
 /*
 SolverCache_t
@@ -245,9 +243,9 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 		for i := 0; i < nPieces; i++ {
 			// diagonal is 0
 			if i == j {
-				m[j*nPieces*3+i] = 0
-				m[j*nPieces*3+i+1] = 0
-				m[j*nPieces*3+i+1] = 0
+				m[j*nPieces*3+i*3] = 0
+				m[j*nPieces*3+i*3+1] = 0
+				m[j*nPieces*3+i*3+2] = 0
 			} else {
 				s1 := node.root.rootDetails.pieceList[i]
 				r1 := node.root.rootDetails.rotationList[i]
@@ -256,9 +254,9 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 				r2 := node.root.rootDetails.rotationList[j]
 				o2 := j * 3
 				pmoves := sc.getMaxValues(s1, r1, s2, r2, node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
-				m[j*nPieces*3+i] = pmoves[0]
-				m[j*nPieces*3+i+1] = pmoves[1]
-				m[j*nPieces*3+i+2] = pmoves[2]
+				m[j*nPieces*3+i*3] = pmoves[0]
+				m[j*nPieces*3+i*3+1] = pmoves[1]
+				m[j*nPieces*3+i*3+2] = pmoves[2]
 			}
 		}
 	}
@@ -323,13 +321,13 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
 			pRow := []burrutils.Id_t{}
-			var vMoveRow burrutils.Distance_t
+			vMoveRow := maxDistance
 			for i := 0; i < nPieces; i++ {
 				vRow := (*matrix)[k*nPieces*3+i*3+dim]
 				if vRow == 0 {
 					pRow = append(pRow, burrutils.Id_t(i))
 				} else {
-					vMoveRow = min(vRow, vMoveRow, maxDistance)
+					vMoveRow = min(vRow, vMoveRow)
 				}
 			}
 			offset := maxVal_t{0, 0, 0}
@@ -354,13 +352,13 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
 			pCol := []burrutils.Id_t{}
-			var vMoveCol burrutils.Distance_t
+			vMoveCol := maxDistance
 			for i := 0; i < nPieces; i++ {
 				vCol := (*matrix)[i*nPieces*3+k*3+dim]
 				if vCol == 0 {
 					pCol = append(pCol, burrutils.Id_t(i))
 				} else {
-					vMoveCol = min(vCol, vMoveCol, maxDistance)
+					vMoveCol = min(vCol, vMoveCol)
 				}
 				offset := maxVal_t{0, 0, 0}
 				if vMoveCol > 0 {
