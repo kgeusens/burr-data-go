@@ -1,8 +1,8 @@
 package solver
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
@@ -127,14 +127,14 @@ func (node *node_t) Separate() []*node_t {
 
 func (node *node_t) GetId() string {
 	if node.id == "" {
-		var idbuilder strings.Builder
 		nPieces := len(node.root.rootDetails.pieceList)
 		offsetList := node.offsetList
-		idbuilder.WriteString("id")
+		str := []string{"id"}
+
 		for idx := 0; idx < nPieces; idx++ {
-			idbuilder.WriteString(fmt.Sprintf(" %v %v %v", offsetList[idx*3]-offsetList[0], offsetList[idx*3+1]-offsetList[1], offsetList[idx*3+2]-offsetList[2]))
+			str = append(str, strconv.Itoa(int(offsetList[idx*3]-offsetList[0])), strconv.Itoa(int(offsetList[idx*3+1]-offsetList[1])), strconv.Itoa(int(offsetList[idx*3+2]-offsetList[2])))
 		}
-		node.id = idbuilder.String()
+		node.id = strings.Join(str, " ")
 	}
 	return node.id
 }

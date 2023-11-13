@@ -23,7 +23,7 @@ or dynamically at time of consultation (and then cached for future).
 type SolverCache_t struct {
 	puzzle         *xmpuzzle.Puzzle
 	problemIndex   uint
-	idSize         uint
+	idSize         int
 	numPrimary     int
 	numSecondary   int
 	shapemap       []burrutils.Id_t
@@ -34,6 +34,7 @@ type SolverCache_t struct {
 	dlxMatrixCache *matrix_t
 	assemblyCache  []assembly_t
 	dlxLookupmap   map[maxVal_t]int
+	cutlerMatrix   []burrutils.Distance_t
 }
 
 /*
@@ -52,12 +53,13 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	sc.puzzle = puzzle
 	sc.problemIndex = problemIdx
 	sc.shapemap = sc.GetProblem().GetShapemap()
-	sc.idSize = uint(len(sc.shapemap))
+	sc.idSize = len(sc.shapemap)
 	sc.resultVoxel = &puzzle.Shapes[sc.GetProblem().Result.Id]
 	resi := NewVoxelinstance(sc.resultVoxel, 0)
 	sc.resultInstance = &resi
 	sc.instanceCache = make(map[uint]*VoxelInstance)
 	sc.movementCache = make(map[uint64]*maxVal_t)
+	sc.cutlerMatrix = make([]burrutils.Distance_t, sc.idSize*sc.idSize*3)
 
 	resmap := *(resi.GetWorldmap())
 	// Baseline the resmap by creating 2 arrays:
@@ -119,17 +121,13 @@ func (sc SolverCache_t) GetResultInstance() (vi *VoxelInstance) {
 Calculate a unique uint64 hashvalue for movements
 */
 func (sc SolverCache_t) calcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
-	bigid1 := uint64(id1)
-	bigrot1 := uint64(rot1)
-	bigid2 := uint64(id2)
-	bigrot2 := uint64(rot2)
-	hash = (((bigid1*24+bigrot1)*uint64(sc.idSize)+bigid2)*24+bigrot2)*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
+	hash = (((uint64(id1)*24+uint64(rot1))*uint64(sc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
 	return
 }
 
-func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (pmoves *maxVal_t) {
+func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (mx, my, mz burrutils.Distance_t) {
 	hash := sc.calcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
-	pmoves = sc.movementCache[hash]
+	pmoves := sc.movementCache[hash]
 	if pmoves == nil {
 		pmoves = new(maxVal_t)
 		sc.movementCache[hash] = pmoves
@@ -142,9 +140,9 @@ func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		bb2 := s2.GetBoundingbox()
 		s1wm := s1.GetWorldmap()
 		s2wm := s2.GetWorldmap()
-		mx := burrutils.Distance_t(maxDistance)
-		my := burrutils.Distance_t(maxDistance)
-		mz := burrutils.Distance_t(maxDistance)
+		mx = burrutils.Distance_t(maxDistance)
+		my = burrutils.Distance_t(maxDistance)
+		mz = burrutils.Distance_t(maxDistance)
 		imin := &intersection.Min
 		imax := &intersection.Max
 		umin := &union.Min
@@ -231,23 +229,25 @@ func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, d
 		pmoves[0] = mx
 		pmoves[1] = my
 		pmoves[2] = mz
+	} else {
+		mx = pmoves[0]
+		my = pmoves[1]
+		mz = pmoves[2]
 	}
 	return
 }
 
-func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Distance_t) {
+func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	nPieces := len(node.root.rootDetails.pieceList)
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
-	m := make([]burrutils.Distance_t, nPieces*nPieces*3)
-	matrix = &m
 	//	numRow := nPieces * 3
 	for j := 0; j < nPieces; j++ {
 		for i := 0; i < nPieces; i++ {
 			// diagonal is 0
 			if i == j {
-				m[j*nPieces*3+i*3] = 0
-				m[j*nPieces*3+i*3+1] = 0
-				m[j*nPieces*3+i*3+2] = 0
+				sc.cutlerMatrix[j*nPieces*3+i*3] = 0
+				sc.cutlerMatrix[j*nPieces*3+i*3+1] = 0
+				sc.cutlerMatrix[j*nPieces*3+i*3+2] = 0
 			} else {
 				s1 := node.root.rootDetails.pieceList[i]
 				r1 := node.root.rootDetails.rotationList[i]
@@ -255,10 +255,7 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 				s2 := node.root.rootDetails.pieceList[j]
 				r2 := node.root.rootDetails.rotationList[j]
 				o2 := j * 3
-				pmoves := sc.getMaxValues(s1, r1, s2, r2, node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
-				m[j*nPieces*3+i*3] = pmoves[0]
-				m[j*nPieces*3+i*3+1] = pmoves[1]
-				m[j*nPieces*3+i*3+2] = pmoves[2]
+				sc.cutlerMatrix[j*nPieces*3+i*3], sc.cutlerMatrix[j*nPieces*3+i*3+1], sc.cutlerMatrix[j*nPieces*3+i*3+2] = sc.getMaxValues(s1, r1, s2, r2, node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
 			}
 		}
 	}
@@ -279,13 +276,13 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 					ikStart := k*nPieces*3 + i*3
 					kjStart := j*nPieces*3 + k*3
 					for dim := 0; dim < 3; dim++ {
-						min := m[ikStart+dim] + m[kjStart+dim]
-						if min < m[ijStart+dim] {
-							m[ijStart+dim] = min
+						min := sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
+						if min < sc.cutlerMatrix[ijStart+dim] {
+							sc.cutlerMatrix[ijStart+dim] = min
 							// optimize: check if this update impacts already updated values
 							if !again {
 								for a := 0; a < i; a++ {
-									if m[j*nPieces*3+a*3+dim] > m[i*nPieces*3+a*3+dim]+m[ijStart+dim] {
+									if sc.cutlerMatrix[j*nPieces*3+a*3+dim] > sc.cutlerMatrix[i*nPieces*3+a*3+dim]+sc.cutlerMatrix[ijStart+dim] {
 										again = true
 										break
 									}
@@ -293,7 +290,7 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 							}
 							if !again {
 								for b := 0; b < j; b++ {
-									if m[b*nPieces*3+i*3+dim] > m[b*nPieces*3+j*3+dim]+m[ijStart+dim] {
+									if sc.cutlerMatrix[b*nPieces*3+i*3+dim] > sc.cutlerMatrix[b*nPieces*3+j*3+dim]+sc.cutlerMatrix[ijStart+dim] {
 										again = true
 										break
 									}
@@ -305,7 +302,6 @@ func (sc *SolverCache_t) calcCutlerMatrix(node *node_t) (matrix *[]burrutils.Dis
 			}
 		}
 	}
-	return
 }
 
 func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
@@ -313,7 +309,7 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 	// the index is not important, but needs to be something we can "pop" from.
 	// Basically, it's the same structure as the "openlist" we will use in the solver,
 	// and that is likely to be an array.
-	matrix := sc.calcCutlerMatrix(node)
+	sc.updateCutlerMatrix(node)
 	movelist := []*node_t{}
 
 	nPieces := len(node.root.rootDetails.pieceList)
@@ -324,12 +320,20 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 		for k := 0; k < nPieces; k++ {
 			pRow := []burrutils.Id_t{}
 			vMoveRow := maxDistance + 1
+			pCol := []burrutils.Id_t{}
+			vMoveCol := maxDistance + 1
 			for i := 0; i < nPieces; i++ {
-				vRow := (*matrix)[k*nPieces*3+i*3+dim]
+				vCol := sc.cutlerMatrix[i*nPieces*3+k*3+dim]
+				vRow := sc.cutlerMatrix[k*nPieces*3+i*3+dim]
 				if vRow == 0 {
 					pRow = append(pRow, burrutils.Id_t(i))
 				} else {
 					vMoveRow = min(vRow, vMoveRow, maxDistance)
+				}
+				if vCol == 0 {
+					pCol = append(pCol, burrutils.Id_t(i))
+				} else {
+					vMoveCol = min(vCol, vMoveCol, maxDistance)
 				}
 			}
 			offset := maxVal_t{0, 0, 0}
@@ -348,34 +352,19 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 					}
 				}
 			}
-		}
-	}
-	// columns next
-	for dim := 0; dim < 3; dim++ {
-		for k := 0; k < nPieces; k++ {
-			pCol := []burrutils.Id_t{}
-			vMoveCol := maxDistance + 1
-			for i := 0; i < nPieces; i++ {
-				vCol := (*matrix)[i*nPieces*3+k*3+dim]
-				if vCol == 0 {
-					pCol = append(pCol, burrutils.Id_t(i))
-				} else {
-					vMoveCol = min(vCol, vMoveCol, maxDistance)
-				}
-			}
-			offset := maxVal_t{0, 0, 0}
+			offsetCol := maxVal_t{0, 0, 0}
 			if vMoveCol <= maxDistance {
 				// we have a partition
 				if len(pCol) <= nPieces/2 {
 					// process separation
 					if vMoveCol >= maxDistance {
-						offset[dim] = maxDistance
+						offsetCol[dim] = maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{NewNodeChild(node, pCol, offset, true)}
+						return []*node_t{NewNodeChild(node, pCol, offsetCol, true)}
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
-						offset[dim] = step
-						movelist = append(movelist, NewNodeChild(node, pCol, offset, false))
+						offsetCol[dim] = step
+						movelist = append(movelist, NewNodeChild(node, pCol, offsetCol, false))
 					}
 				}
 			}
@@ -444,8 +433,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 				} else {
 					// this is a separation, put the sub problems on the parking lot and continue to the next one on the parking
 					separated = true // FLAG STOP TO GO TO NEXT ON PARKING
-					debugSep := st.Separate()
-					parking = append(parking, debugSep...)
+					parking = append(parking, st.Separate()...)
 					if DEBUG {
 						fmt.Println("SEPARATION FOUND level", level)
 					}
