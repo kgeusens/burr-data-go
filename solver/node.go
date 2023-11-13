@@ -129,10 +129,12 @@ func (node *node_t) GetId() string {
 	if node.id == "" {
 		nPieces := len(node.root.rootDetails.pieceList)
 		offsetList := node.offsetList
-		str := []string{"id"}
-
+		str := make([]string, nPieces*3+1)
+		str[0] = "id"
 		for idx := 0; idx < nPieces; idx++ {
-			str = append(str, strconv.Itoa(int(offsetList[idx*3]-offsetList[0])), strconv.Itoa(int(offsetList[idx*3+1]-offsetList[1])), strconv.Itoa(int(offsetList[idx*3+2]-offsetList[2])))
+			str[1+idx*3] = strconv.Itoa(int(offsetList[idx*3] - offsetList[0]))
+			str[2+idx*3] = strconv.Itoa(int(offsetList[idx*3+1] - offsetList[1]))
+			str[3+idx*3] = strconv.Itoa(int(offsetList[idx*3+2] - offsetList[2]))
 		}
 		node.id = strings.Join(str, " ")
 	}

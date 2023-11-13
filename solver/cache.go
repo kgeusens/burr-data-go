@@ -304,7 +304,7 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	}
 }
 
-func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
+func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	// KG: should return an array, or a map, with *node_t as values
 	// the index is not important, but needs to be something we can "pop" from.
 	// Basically, it's the same structure as the "openlist" we will use in the solver,
@@ -407,7 +407,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 			curLength -= 1
 			node = openlist[curListFront][curLength]
 			openlist[curListFront] = openlist[curListFront][:curLength]
-			movesList := sc.getMovevementList(node)
+			movesList := sc.getMovementList(node)
 			if DEBUG {
 				fmt.Println("node ", node.GetId())
 			}
