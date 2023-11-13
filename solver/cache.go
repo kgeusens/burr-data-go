@@ -1,6 +1,8 @@
 package solver
 
 import (
+	"fmt"
+
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
@@ -321,17 +323,17 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
 			pRow := []burrutils.Id_t{}
-			vMoveRow := maxDistance
+			vMoveRow := maxDistance + 1
 			for i := 0; i < nPieces; i++ {
 				vRow := (*matrix)[k*nPieces*3+i*3+dim]
 				if vRow == 0 {
 					pRow = append(pRow, burrutils.Id_t(i))
 				} else {
-					vMoveRow = min(vRow, vMoveRow)
+					vMoveRow = min(vRow, vMoveRow, maxDistance)
 				}
 			}
 			offset := maxVal_t{0, 0, 0}
-			if vMoveRow > 0 {
+			if vMoveRow <= maxDistance {
 				// we have a partition
 				if len(pRow) <= nPieces/2 {
 					// process separation
@@ -352,28 +354,28 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
 			pCol := []burrutils.Id_t{}
-			vMoveCol := maxDistance
+			vMoveCol := maxDistance + 1
 			for i := 0; i < nPieces; i++ {
 				vCol := (*matrix)[i*nPieces*3+k*3+dim]
 				if vCol == 0 {
 					pCol = append(pCol, burrutils.Id_t(i))
 				} else {
-					vMoveCol = min(vCol, vMoveCol)
+					vMoveCol = min(vCol, vMoveCol, maxDistance)
 				}
-				offset := maxVal_t{0, 0, 0}
-				if vMoveCol > 0 {
-					// we have a partition
-					if len(pCol) <= nPieces/2 {
-						// process separation
-						if vMoveCol >= maxDistance {
-							offset[dim] = maxDistance
-							// We should be returning an array of new nodes
-							return []*node_t{NewNodeChild(node, pCol, offset, true)}
-						}
-						for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
-							offset[dim] = -1 * step
-							movelist = append(movelist, NewNodeChild(node, pCol, offset, false))
-						}
+			}
+			offset := maxVal_t{0, 0, 0}
+			if vMoveCol <= maxDistance {
+				// we have a partition
+				if len(pCol) <= nPieces/2 {
+					// process separation
+					if vMoveCol >= maxDistance {
+						offset[dim] = maxDistance
+						// We should be returning an array of new nodes
+						return []*node_t{NewNodeChild(node, pCol, offset, true)}
+					}
+					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
+						offset[dim] = step
+						movelist = append(movelist, NewNodeChild(node, pCol, offset, false))
 					}
 				}
 			}
@@ -383,6 +385,7 @@ func (sc *SolverCache_t) getMovevementList(node *node_t) []*node_t {
 }
 
 func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
+	DEBUG := false
 	var startNode *node_t
 	startNode = NewNodeFromAssembly(assembly)
 	// parking is an array.
@@ -391,7 +394,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 	parking := []*node_t{startNode}
 
 	var node *node_t
-	//	var level int
+	var level int
 	closedCache := make(map[string]bool)
 	// adding an entry to closedCache : closedCache[id]=true
 	// checking if entry exists: closedCache[id]
@@ -408,7 +411,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 		closedCache[startNode.GetId()] = true
 		openlist[curListFront] = append(openlist[curListFront], startNode)
 
-		//		level = 1
+		level = 1
 		curLength := len(openlist[curListFront])
 		for !(curLength == 0) && !separated {
 			// pop
@@ -416,6 +419,9 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 			node = openlist[curListFront][curLength]
 			openlist[curListFront] = openlist[curListFront][:curLength]
 			movesList := sc.getMovevementList(node)
+			if DEBUG {
+				fmt.Println("node ", node.GetId())
+			}
 			var st *node_t
 			movesListLength := len(movesList)
 			for movesListLength != 0 && !separated {
@@ -423,6 +429,9 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 				movesListLength -= 1
 				st = movesList[movesListLength]
 				movesList = movesList[:movesListLength]
+				if DEBUG {
+					fmt.Println(st.movingPieceList, st.moveDirection, st.isSeparation, st.GetId())
+				}
 				if closedCache[st.GetId()] {
 					continue
 				}
@@ -435,13 +444,22 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 				} else {
 					// this is a separation, put the sub problems on the parking lot and continue to the next one on the parking
 					separated = true // FLAG STOP TO GO TO NEXT ON PARKING
-					parking = append(parking, node.Separate()...)
+					debugSep := st.Separate()
+					parking = append(parking, debugSep...)
+					if DEBUG {
+						fmt.Println("SEPARATION FOUND level", level)
+					}
 				}
 			}
 			//
 			if len(openlist[curListFront]) == 0 && !separated {
+				if DEBUG {
+					fmt.Println("Next Level", level)
+					level++
+				}
 				curListFront = 1 - curListFront
 				newListFront = 1 - newListFront
+				curLength = len(openlist[curListFront])
 			}
 		}
 		// if we get here, we can check the separated flag to see if it is a dead end, or a separation

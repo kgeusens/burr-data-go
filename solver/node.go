@@ -89,7 +89,7 @@ func (node *node_t) Separate() []*node_t {
 			}
 			for idx := 0; idx < nPieces; idx++ {
 				if !slices.Contains(node.movingPieceList, burrutils.Id_t(idx)) {
-					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.rootDetails.hotspotList[idx*3], node.rootDetails.hotspotList[idx*3+1], node.rootDetails.hotspotList[idx*3+2])
+					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.root.rootDetails.hotspotList[idx*3], node.root.rootDetails.hotspotList[idx*3+1], node.root.rootDetails.hotspotList[idx*3+2])
 					newRoot.offsetList = append(newRoot.offsetList, node.offsetList[idx*3], node.offsetList[idx*3+1], node.offsetList[idx*3+2])
 				}
 			}
@@ -115,7 +115,7 @@ func (node *node_t) Separate() []*node_t {
 			}
 			for idx := 0; idx < nPieces; idx++ {
 				if slices.Contains(node.movingPieceList, burrutils.Id_t(idx)) {
-					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.rootDetails.hotspotList[idx*3], node.rootDetails.hotspotList[idx*3+1], node.rootDetails.hotspotList[idx*3+2])
+					newRoot.rootDetails.hotspotList = append(newRoot.rootDetails.hotspotList, node.root.rootDetails.hotspotList[idx*3], node.root.rootDetails.hotspotList[idx*3+1], node.root.rootDetails.hotspotList[idx*3+2])
 					newRoot.offsetList = append(newRoot.offsetList, node.offsetList[idx*3], node.offsetList[idx*3+1], node.offsetList[idx*3+2])
 				}
 			}
