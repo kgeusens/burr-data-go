@@ -6,6 +6,8 @@ import (
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
 
+const maxShapes = 30
+
 /*
 Limitation:
 The problem we are solving can not have more than 30 pieces.
@@ -13,7 +15,7 @@ That is because we needed a super fast "GetID" solution for the nodes that is "c
 and an array of fixed length seemed to be the fastest. However, the length of the array
 has a considerable impace on the performance.
 */
-type id_t [90]burrutils.Distance_t
+type id_t [3 * maxShapes]burrutils.Distance_t
 
 type node_t struct {
 	parent          *node_t
