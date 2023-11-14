@@ -2,11 +2,18 @@ package solver
 
 import (
 	"slices"
-	"strconv"
-	"strings"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 )
+
+/*
+Limitation:
+The problem we are solving can not have more than 30 pieces.
+That is because we needed a super fast "GetID" solution for the nodes that is "comparable"
+and an array of fixed length seemed to be the fastest. However, the length of the array
+has a considerable impace on the performance.
+*/
+type id_t [90]burrutils.Distance_t
 
 type node_t struct {
 	parent          *node_t
@@ -15,7 +22,7 @@ type node_t struct {
 	offsetList      []burrutils.Distance_t
 	movingPieceList []burrutils.Id_t
 	moveDirection   [3]burrutils.Distance_t
-	id              string
+	id              *id_t
 	rootDetails     *rootDetails_t
 }
 
@@ -27,7 +34,6 @@ type rootDetails_t struct {
 
 type nodecache struct {
 	freeList []*node_t
-	// stackpointer int
 }
 
 func (nc *nodecache) request() *node_t {
@@ -42,25 +48,8 @@ func (nc *nodecache) request() *node_t {
 		node.movingPieceList = []burrutils.Id_t{}
 		node.offsetList = []burrutils.Distance_t{}
 	}
-	/*
-		if nc.stackpointer > 0 {
-			nc.stackpointer--
-			return nc.freeList[nc.stackpointer]
-		} else {
-			n := new(node_t)
-			n.movingPieceList = []burrutils.Id_t{}
-			return new(node_t)
-		}
-	*/
 	return node
 }
-
-/*
-func (nc *nodecache) release(node *node_t) {
-	nc.freeList[nc.stackpointer] = node
-	nc.stackpointer++
-}
-*/
 
 func releaseNode(node *node_t) {
 	node.parent = nil
@@ -71,7 +60,7 @@ func releaseNode(node *node_t) {
 	node.moveDirection[0] = 0
 	node.moveDirection[1] = 0
 	node.moveDirection[2] = 0
-	node.id = ""
+	node.id = nil
 	node.rootDetails = nil
 	theNodecache.freeList = append(theNodecache.freeList, node)
 	// theNodecache.stackpointer++
@@ -175,21 +164,18 @@ func (node *node_t) Separate() []*node_t {
 	return newNodes
 }
 
-// room for 100 pieces
-var str []string = make([]string, 301)
-
-func (node *node_t) GetId() string {
-	if node.id == "" {
+func (node *node_t) GetId() id_t {
+	if node.id == nil {
 		nPieces := len(node.root.rootDetails.pieceList)
 		offsetList := node.offsetList
+		node.id = new(id_t)
 		//		str := make([]string, nPieces*3+1)
-		str[0] = "id"
 		for idx := 0; idx < nPieces; idx++ {
-			str[1+idx*3] = strconv.Itoa(int(offsetList[idx*3] - offsetList[0]))
-			str[2+idx*3] = strconv.Itoa(int(offsetList[idx*3+1] - offsetList[1]))
-			str[3+idx*3] = strconv.Itoa(int(offsetList[idx*3+2] - offsetList[2]))
+			node.id[idx*3] = offsetList[idx*3] - offsetList[0]
+			node.id[1+idx*3] = offsetList[idx*3+1] - offsetList[1]
+			node.id[2+idx*3] = offsetList[idx*3+2] - offsetList[2]
 		}
-		node.id = strings.Join(str[:nPieces*3+1], " ")
+
 	}
-	return node.id
+	return *node.id
 }

@@ -120,13 +120,14 @@ func (sc SolverCache_t) GetResultInstance() (vi *VoxelInstance) {
 /*
 Calculate a unique uint64 hashvalue for movements
 */
+/*
 func (sc SolverCache_t) calcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
 	hash = (((uint64(id1)*24+uint64(rot1))*uint64(sc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
 	return
 }
-
+*/
 func (sc *SolverCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (mx, my, mz burrutils.Distance_t) {
-	hash := sc.calcMovementHash(id1, rot1, id2, rot2, dx, dy, dz)
+	hash := (((uint64(id1)*24+uint64(rot1))*uint64(sc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
 	pmoves := sc.movementCache[hash]
 	if pmoves == nil {
 		pmoves = new(maxVal_t)
@@ -261,6 +262,8 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	}
 	// Phase 2: algorithm from Bill Cutler
 	again := true
+	var min burrutils.Distance_t
+	var ijStart, ikStart, kjStart int
 	for again {
 		again = false
 		for j := 0; j < nPieces; j++ {
@@ -272,11 +275,11 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 					if k == j {
 						continue
 					}
-					ijStart := j*nPieces*3 + i*3
-					ikStart := k*nPieces*3 + i*3
-					kjStart := j*nPieces*3 + k*3
+					ijStart = j*nPieces*3 + i*3
+					ikStart = k*nPieces*3 + i*3
+					kjStart = j*nPieces*3 + k*3
 					for dim := 0; dim < 3; dim++ {
-						min := sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
+						min = sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
 						if min < sc.cutlerMatrix[ijStart+dim] {
 							sc.cutlerMatrix[ijStart+dim] = min
 							// optimize: check if this update impacts already updated values
@@ -389,7 +392,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 	parking := []*node_t{NewNodeFromAssembly(assembly)}
 	var node *node_t
 	var level int
-	closedCache := make(map[string]bool)
+	closedCache := make(map[id_t]bool)
 	// adding an entry to closedCache : closedCache[id]=true
 	// checking if entry exists: closedCache[id]
 	separated := false
