@@ -305,33 +305,40 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 }
 
 func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
-	// KG: should return an array, or a map, with *node_t as values
-	// the index is not important, but needs to be something we can "pop" from.
-	// Basically, it's the same structure as the "openlist" we will use in the solver,
-	// and that is likely to be an array.
+	// pRow, pCol can only contain max nPieces, so better preallocate
+	// and reuse instead of doing a lot of append calls.
+	// movelist is a different beast and lenght is hard to predict.
 	sc.updateCutlerMatrix(node)
 	movelist := []*node_t{}
 
 	nPieces := len(node.root.rootDetails.pieceList)
+	pRow := make([]burrutils.Id_t, nPieces)
+	pCol := make([]burrutils.Id_t, nPieces)
+	var pRowLen, pColLen int
+	vMoveRow := maxDistance + 1
+	vMoveCol := maxDistance + 1
+	var vCol, vRow burrutils.Distance_t
 
 	// rows first
 	// KG : colapse rows and cols into same logic
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
-			pRow := []burrutils.Id_t{}
-			vMoveRow := maxDistance + 1
-			pCol := []burrutils.Id_t{}
-			vMoveCol := maxDistance + 1
+			pRowLen = 0
+			pColLen = 0
+			vMoveRow = maxDistance + 1
+			vMoveCol = maxDistance + 1
 			for i := 0; i < nPieces; i++ {
-				vCol := sc.cutlerMatrix[i*nPieces*3+k*3+dim]
-				vRow := sc.cutlerMatrix[k*nPieces*3+i*3+dim]
+				vCol = sc.cutlerMatrix[i*nPieces*3+k*3+dim]
+				vRow = sc.cutlerMatrix[k*nPieces*3+i*3+dim]
 				if vRow == 0 {
-					pRow = append(pRow, burrutils.Id_t(i))
+					pRow[pRowLen] = burrutils.Id_t(i)
+					pRowLen++
 				} else {
 					vMoveRow = min(vRow, vMoveRow, maxDistance)
 				}
 				if vCol == 0 {
-					pCol = append(pCol, burrutils.Id_t(i))
+					pCol[pColLen] = burrutils.Id_t(i)
+					pColLen++
 				} else {
 					vMoveCol = min(vCol, vMoveCol, maxDistance)
 				}
@@ -339,32 +346,32 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 			offset := maxVal_t{0, 0, 0}
 			if vMoveRow <= maxDistance {
 				// we have a partition
-				if len(pRow) <= nPieces/2 {
+				if pRowLen <= nPieces/2 {
 					// process separation
 					if vMoveRow >= maxDistance {
 						offset[dim] = -1 * maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{NewNodeChild(node, pRow, offset, true)}
+						return []*node_t{NewNodeChild(node, pRow[:pRowLen], offset, true)}
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveRow; step++ {
 						offset[dim] = -1 * step
-						movelist = append(movelist, NewNodeChild(node, pRow, offset, false))
+						movelist = append(movelist, NewNodeChild(node, pRow[:pRowLen], offset, false))
 					}
 				}
 			}
 			offsetCol := maxVal_t{0, 0, 0}
 			if vMoveCol <= maxDistance {
 				// we have a partition
-				if len(pCol) <= nPieces/2 {
+				if pColLen <= nPieces/2 {
 					// process separation
 					if vMoveCol >= maxDistance {
 						offsetCol[dim] = maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{NewNodeChild(node, pCol, offsetCol, true)}
+						return []*node_t{NewNodeChild(node, pCol[:pColLen], offsetCol, true)}
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
 						offsetCol[dim] = step
-						movelist = append(movelist, NewNodeChild(node, pCol, offsetCol, false))
+						movelist = append(movelist, NewNodeChild(node, pCol[:pColLen], offsetCol, false))
 					}
 				}
 			}
