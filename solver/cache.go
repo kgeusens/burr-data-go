@@ -245,8 +245,9 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
 	//	numRow := nPieces * 3
 	var o1, o2 int
-	for j := 0; j < nPieces; j++ {
-		for i := 0; i < nPieces; i++ {
+	var i, j, k, dim, a int
+	for j = 0; j < nPieces; j++ {
+		for i = 0; i < nPieces; i++ {
 			// diagonal is 0
 			if i == j {
 				sc.cutlerMatrix[j*nDims+i*3] = 0
@@ -266,28 +267,28 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	var tmpval *burrutils.Distance_t
 	for again {
 		again = false
-		for j := 0; j < nPieces; j++ {
-			for i := 0; i < nPieces; i++ {
+		for j = 0; j < nPieces; j++ {
+			for i = 0; i < nPieces; i++ {
 				if i == j {
 					continue
 				}
 				ijStart = j*nDims + i*3
 				kjStart = j*nDims - 3
 				ikStart = i*3 - nDims
-				for k := 0; k < nPieces; k++ {
+				for k = 0; k < nPieces; k++ {
 					kjStart += 3
 					ikStart += nDims
 					if k == j {
 						continue
 					}
-					for dim := 0; dim < 3; dim++ {
+					for dim = 0; dim < 3; dim++ {
 						min = sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
 						tmpval = &sc.cutlerMatrix[ijStart+dim]
 						if min < *tmpval {
 							*tmpval = min
 							// optimize: check if this update impacts already updated values
 							if !again {
-								for a := 0; a < i; a++ {
+								for a = 0; a < i; a++ {
 									if sc.cutlerMatrix[j*nDims+a*3+dim] > sc.cutlerMatrix[i*nDims+a*3+dim]+*tmpval {
 										again = true
 										break
@@ -295,7 +296,7 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 								}
 							}
 							if !again {
-								for a := 0; a < j; a++ {
+								for a = 0; a < j; a++ {
 									if sc.cutlerMatrix[a*nDims+i*3+dim] > sc.cutlerMatrix[a*nDims+j*3+dim]+*tmpval {
 										again = true
 										break
