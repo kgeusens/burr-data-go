@@ -383,12 +383,10 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 	DEBUG := false
 	var startNode *node_t
-	startNode = NewNodeFromAssembly(assembly)
 	// parking is an array.
 	// push is the same as parking=append(parking, newnode)
 	// pop is the same as parking=parking[:len(parking)-1]
-	parking := []*node_t{startNode}
-
+	parking := []*node_t{NewNodeFromAssembly(assembly)}
 	var node *node_t
 	var level int
 	closedCache := make(map[string]bool)
@@ -397,6 +395,9 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 	separated := false
 	for len(parking) > 0 {
 		// pop from parking
+		if startNode != nil {
+			releaseNode(startNode)
+		}
 		startNode = parking[len(parking)-1]
 		parking = parking[:len(parking)-1]
 		curListFront := 0
@@ -429,6 +430,7 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 					fmt.Println(st.movingPieceList, st.moveDirection, st.isSeparation, st.GetId())
 				}
 				if closedCache[st.GetId()] {
+					releaseNode(st)
 					continue
 				}
 				// never seen this node before, add it to cache
@@ -464,5 +466,6 @@ func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
 		}
 	}
 	// SUCCESS
+	fmt.Println(len(closedCache))
 	return true
 }

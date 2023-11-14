@@ -25,14 +25,66 @@ type rootDetails_t struct {
 	hotspotList  []burrutils.Distance_t
 }
 
+type nodecache struct {
+	freeList []*node_t
+	// stackpointer int
+}
+
+func (nc *nodecache) request() *node_t {
+	cacheLen := len(nc.freeList)
+	var node *node_t
+	if cacheLen > 0 {
+		cacheLen--
+		node = nc.freeList[cacheLen]
+		nc.freeList = nc.freeList[:cacheLen]
+	} else {
+		node = new(node_t)
+		node.movingPieceList = []burrutils.Id_t{}
+		node.offsetList = []burrutils.Distance_t{}
+	}
+	/*
+		if nc.stackpointer > 0 {
+			nc.stackpointer--
+			return nc.freeList[nc.stackpointer]
+		} else {
+			n := new(node_t)
+			n.movingPieceList = []burrutils.Id_t{}
+			return new(node_t)
+		}
+	*/
+	return node
+}
+
+/*
+func (nc *nodecache) release(node *node_t) {
+	nc.freeList[nc.stackpointer] = node
+	nc.stackpointer++
+}
+*/
+
+func releaseNode(node *node_t) {
+	node.parent = nil
+	node.root = nil
+	node.isSeparation = false
+	node.offsetList = node.offsetList[:0]
+	node.movingPieceList = node.movingPieceList[:0]
+	node.moveDirection[0] = 0
+	node.moveDirection[1] = 0
+	node.moveDirection[2] = 0
+	node.id = ""
+	node.rootDetails = nil
+	theNodecache.freeList = append(theNodecache.freeList, node)
+	// theNodecache.stackpointer++
+}
+
+var theNodecache nodecache = nodecache{make([]*node_t, 0)}
+
 func NewNodeChild(parent *node_t, movingPieceList []burrutils.Id_t, translation [3]burrutils.Distance_t, separation bool) (child *node_t) {
-	child = new(node_t)
+	child = theNodecache.request()
 	child.root = parent.root
 	child.parent = parent
 	child.isSeparation = separation
-	child.offsetList = []burrutils.Distance_t{}
 	child.offsetList = append(child.offsetList, parent.offsetList...) // copy slice of ints
-	child.movingPieceList = []burrutils.Id_t{}
 	child.movingPieceList = append(child.movingPieceList, movingPieceList...)
 	child.moveDirection[0] = translation[0]
 	child.moveDirection[1] = translation[1]
@@ -50,7 +102,7 @@ func NewNodeChild(parent *node_t, movingPieceList []burrutils.Id_t, translation 
 
 func NewNodeFromAssembly(passembly *assembly_t) *node_t {
 	assembly := *passembly
-	root := new(node_t)
+	root := theNodecache.request()
 	root.root = root
 	root.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 	// loop over the shape annotations
@@ -71,11 +123,10 @@ func (node *node_t) Separate() []*node_t {
 		if nPieces-len(node.movingPieceList) > 1 {
 			// so at this point, we know we are a separation
 			// movingPieceList and movingDirection tells us what to work with
-			newRoot := new(node_t)
+			newRoot := theNodecache.request()
 			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 			newRoot.parent = node
 			newRoot.root = newRoot
-			newRoot.offsetList = []burrutils.Distance_t{}
 			// only keep the pieces that are not moving. Filter out the moving pieces
 			for i, v := range node.root.rootDetails.pieceList {
 				if !slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
@@ -97,11 +148,10 @@ func (node *node_t) Separate() []*node_t {
 		}
 		if len(node.movingPieceList) > 1 {
 			// This is normally the smallest partition
-			newRoot := new(node_t)
+			newRoot := theNodecache.request()
 			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
 			newRoot.parent = node
 			newRoot.root = newRoot
-			newRoot.offsetList = []burrutils.Distance_t{}
 			// only keep the pieces that are not moving. Filter out the moving pieces
 			for i, v := range node.root.rootDetails.pieceList {
 				if slices.Contains(node.movingPieceList, burrutils.Id_t(i)) {
