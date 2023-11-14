@@ -34,7 +34,8 @@ type SolverCache_t struct {
 	dlxMatrixCache *matrix_t
 	assemblyCache  []assembly_t
 	dlxLookupmap   map[maxVal_t]int
-	cutlerMatrix   []burrutils.Distance_t
+	cutlerMatrix   [3 * maxShapes * maxShapes]burrutils.Distance_t
+	movesList      []*node_t
 }
 
 /*
@@ -59,7 +60,7 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc SolverCache_t)
 	sc.resultInstance = &resi
 	sc.instanceCache = make(map[uint]*VoxelInstance)
 	sc.movementCache = make(map[uint64]*maxVal_t)
-	sc.cutlerMatrix = make([]burrutils.Distance_t, sc.idSize*sc.idSize*3)
+	sc.movesList = make([]*node_t, 3*maxShapes)
 
 	resmap := *(resi.GetWorldmap())
 	// Baseline the resmap by creating 2 arrays:
@@ -262,6 +263,7 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	again := true
 	var min burrutils.Distance_t
 	var ijStart, ikStart, kjStart int
+	var tmpval *burrutils.Distance_t
 	for again {
 		again = false
 		for j := 0; j < nPieces; j++ {
@@ -278,23 +280,23 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 					if k == j {
 						continue
 					}
-					//					kjStart = j*nDims + k*3
 					for dim := 0; dim < 3; dim++ {
 						min = sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
-						if min < sc.cutlerMatrix[ijStart+dim] {
-							sc.cutlerMatrix[ijStart+dim] = min
+						tmpval = &sc.cutlerMatrix[ijStart+dim]
+						if min < *tmpval {
+							*tmpval = min
 							// optimize: check if this update impacts already updated values
 							if !again {
 								for a := 0; a < i; a++ {
-									if sc.cutlerMatrix[j*nDims+a*3+dim] > sc.cutlerMatrix[i*nDims+a*3+dim]+sc.cutlerMatrix[ijStart+dim] {
+									if sc.cutlerMatrix[j*nDims+a*3+dim] > sc.cutlerMatrix[i*nDims+a*3+dim]+*tmpval {
 										again = true
 										break
 									}
 								}
 							}
 							if !again {
-								for b := 0; b < j; b++ {
-									if sc.cutlerMatrix[b*nDims+i*3+dim] > sc.cutlerMatrix[b*nDims+j*3+dim]+sc.cutlerMatrix[ijStart+dim] {
+								for a := 0; a < j; a++ {
+									if sc.cutlerMatrix[a*nDims+i*3+dim] > sc.cutlerMatrix[a*nDims+j*3+dim]+*tmpval {
 										again = true
 										break
 									}
@@ -313,7 +315,8 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	// and reuse instead of doing a lot of append calls.
 	// movelist is a different beast and lenght is hard to predict.
 	sc.updateCutlerMatrix(node)
-	movelist := []*node_t{}
+	movelist := sc.movesList
+	movelistLen := 0
 
 	nPieces := len(node.root.rootDetails.pieceList)
 	pRow := make([]burrutils.Id_t, nPieces)
@@ -359,7 +362,8 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveRow; step++ {
 						offset[dim] = -1 * step
-						movelist = append(movelist, NewNodeChild(node, pRow[:pRowLen], offset, false))
+						movelist[movelistLen] = NewNodeChild(node, pRow[:pRowLen], offset, false)
+						movelistLen++
 					}
 				}
 			}
@@ -375,13 +379,14 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
 						offsetCol[dim] = step
-						movelist = append(movelist, NewNodeChild(node, pCol[:pColLen], offsetCol, false))
+						movelist[movelistLen] = NewNodeChild(node, pCol[:pColLen], offsetCol, false)
+						movelistLen++
 					}
 				}
 			}
 		}
 	}
-	return movelist
+	return movelist[:movelistLen]
 }
 
 func (sc SolverCache_t) Solve(assembly *assembly_t) bool {
