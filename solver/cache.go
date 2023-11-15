@@ -403,7 +403,7 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	return movelist[:movelistLen]
 }
 
-func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int, c chan bool) bool {
+func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
 	DEBUG := false
 	if DEBUG {
 		fmt.Println(asmid, " start solving")
@@ -489,12 +489,10 @@ func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int, c chan bool) boo
 		// if we get here, we can check the separated flag to see if it is a dead end, or a separation
 		// if it is a separation, continue to the next on the parking, else return false
 		if !separated {
-			c <- false
 			return false
 		}
 	}
 	// SUCCESS
 	fmt.Println(asmid, "Solution found")
-	c <- true
 	return true
 }
