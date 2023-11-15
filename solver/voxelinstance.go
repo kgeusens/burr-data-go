@@ -50,9 +50,3 @@ func (vi VoxelInstance) GetWorldmap() (wm *xmpuzzle.Worldmap) {
 func (vi VoxelInstance) GetBoundingbox() (wm *xmpuzzle.Boundingbox) {
 	return vi.cachedBB
 }
-
-/*
-func (vi VoxelInstance) GetVoxel() (v *xmpuzzle.Voxel) {
-	return vi.voxel
-}
-*/

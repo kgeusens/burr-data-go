@@ -43,6 +43,7 @@ type SolverCache_t struct {
 	pc           *ProblemCache_t                                 // pointer to the parent ProblemCache. Can not be nil.
 	cutlerMatrix [3 * maxShapes * maxShapes]burrutils.Distance_t // contains the cutlermatrix for a state in the tree
 	movesList    []*node_t                                       // used in getMovementList to calculate moveable pieces from a state in the tree
+	nodecache    NodeCache_t
 }
 
 /*
@@ -60,6 +61,7 @@ func NewSolverCache(pc *ProblemCache_t) (sc SolverCache_t) {
 	sc = *psc
 	sc.pc = pc
 	sc.movesList = make([]*node_t, 3*maxShapes)
+	sc.nodecache = NodeCache_t{make([]*node_t, 0)}
 	return
 }
 
@@ -370,11 +372,11 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					if vMoveRow >= maxDistance {
 						offset[dim] = -1 * maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{NewNodeChild(node, pRow[:pRowLen], offset, true)}
+						return []*node_t{sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, true)}
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveRow; step++ {
 						offset[dim] = -1 * step
-						movelist[movelistLen] = NewNodeChild(node, pRow[:pRowLen], offset, false)
+						movelist[movelistLen] = sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, false)
 						movelistLen++
 					}
 				}
@@ -387,11 +389,11 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					if vMoveCol >= maxDistance {
 						offsetCol[dim] = maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{NewNodeChild(node, pCol[:pColLen], offsetCol, true)}
+						return []*node_t{sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, true)}
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
 						offsetCol[dim] = step
-						movelist[movelistLen] = NewNodeChild(node, pCol[:pColLen], offsetCol, false)
+						movelist[movelistLen] = sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, false)
 						movelistLen++
 					}
 				}
@@ -401,17 +403,17 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	return movelist[:movelistLen]
 }
 
-func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bool {
+func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int, c chan bool) bool {
 	DEBUG := false
 	if DEBUG {
-		fmt.Println("solving", asmid)
+		fmt.Println(asmid, " start solving")
 	}
 	sc := NewSolverCache(pc)
 	var startNode *node_t
 	// parking is an array.
 	// push is the same as parking=append(parking, newnode)
 	// pop is the same as parking=parking[:len(parking)-1]
-	parking := []*node_t{NewNodeFromAssembly(assembly)}
+	parking := []*node_t{sc.nodecache.NewNodeFromAssembly(assembly)}
 	var node *node_t
 	var level int
 	closedCache := make(map[id_t]bool)
@@ -421,7 +423,7 @@ func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bo
 	for len(parking) > 0 {
 		// pop from parking
 		if startNode != nil {
-			releaseNode(startNode)
+			sc.nodecache.release(startNode)
 		}
 		startNode = parking[len(parking)-1]
 		parking = parking[:len(parking)-1]
@@ -442,7 +444,7 @@ func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bo
 			openlist[curListFront] = openlist[curListFront][:curLength]
 			movesList := sc.getMovementList(node)
 			if DEBUG {
-				fmt.Println("node ", node.GetId())
+				fmt.Println(asmid, "node", node.GetId())
 			}
 			var st *node_t
 			movesListLength := len(movesList)
@@ -452,10 +454,10 @@ func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bo
 				st = movesList[movesListLength]
 				movesList = movesList[:movesListLength]
 				if DEBUG {
-					fmt.Println(st.movingPieceList, st.moveDirection, st.isSeparation, st.GetId())
+					fmt.Println(asmid, st.movingPieceList, st.moveDirection, st.isSeparation, st.GetId())
 				}
 				if closedCache[st.GetId()] {
-					releaseNode(st)
+					sc.nodecache.release(st)
 					continue
 				}
 				// never seen this node before, add it to cache
@@ -467,16 +469,16 @@ func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bo
 				} else {
 					// this is a separation, put the sub problems on the parking lot and continue to the next one on the parking
 					separated = true // FLAG STOP TO GO TO NEXT ON PARKING
-					parking = append(parking, st.Separate()...)
+					parking = append(parking, sc.nodecache.Separate(st)...)
 					if DEBUG {
-						fmt.Println("SEPARATION FOUND level", level)
+						fmt.Println(asmid, "SEPARATION FOUND level", level)
 					}
 				}
 			}
 			//
 			if len(openlist[curListFront]) == 0 && !separated {
 				if DEBUG {
-					fmt.Println("Next Level", level)
+					fmt.Println(asmid, "Next Level", level)
 					level++
 				}
 				curListFront = 1 - curListFront
@@ -492,7 +494,7 @@ func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bo
 		}
 	}
 	// SUCCESS
-	fmt.Println("Solution found at", asmid)
+	fmt.Println(asmid, "Solution found")
 	c <- true
 	return true
 }
