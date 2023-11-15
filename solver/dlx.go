@@ -41,7 +41,7 @@ type matrix_t []*matrixEntry_t
 calcDLXrow returns a single DLX row for a rotated and translated shape.
 The shape is identified by its id, rotation, and offset relative to the result
 */
-func (sc SolverCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burrutils.Distance_t) (result row_t) {
+func (sc ProblemCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burrutils.Distance_t) (result row_t) {
 	// Get the worldmap of the resultvoxel
 	r := sc.GetResultInstance()
 	resmap := *(r.GetWorldmap())
@@ -68,7 +68,7 @@ func (sc SolverCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burrut
 	return
 }
 
-func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
+func (sc ProblemCache_t) calcDLXmatrix() *matrix_t {
 	/*
 		Challenge: how to annotate the rows? One idea is to keep a separate array of same length as
 		the solutions matrix, and store the annotations there
@@ -138,7 +138,7 @@ func (sc SolverCache_t) calcDLXmatrix() *matrix_t {
 	return &matrix
 }
 
-func (sc *SolverCache_t) getDLXmatrix() *matrix_t {
+func (sc *ProblemCache_t) getDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {
 		sc.dlxMatrixCache = sc.calcDLXmatrix()
 	}

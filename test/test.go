@@ -39,8 +39,12 @@ func main() {
 	puzzle := xmpuzzle.ParseXML(xmlstring)
 	cache := solver.NewSolverCache(&puzzle, 0)
 	assemblies := cache.GetAssemblies()
+	c := make(chan bool)
+	var res bool
 	for i, a := range assemblies {
-		if cache.Solve(&a) {
+		go cache.Solve(&a, i, c)
+		res = <-c
+		if res {
 			fmt.Println("Solution found at ", i)
 		}
 	}
