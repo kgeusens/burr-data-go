@@ -35,8 +35,12 @@ type ProblemCache_t struct {
 	dlxMatrixCache *matrix_t            // used by the DLX algorithm in assemble phase, contains the full DLX matrix
 	assemblyCache  []assembly_t         // result of the assemble phase
 	dlxLookupmap   map[maxVal_t]int     // used to calculate a row in the DLX matrix. Static throughout the cache lifecycle
+}
+
+type SolverCache_t struct {
 	// These are used every time we analyse a potential move in the solver
 	// If we want to operate in parallel, it needs to move to a cache that is unique per Assembly we are solving
+	pc           *ProblemCache_t                                 // pointer to the parent ProblemCache. Can not be nil.
 	cutlerMatrix [3 * maxShapes * maxShapes]burrutils.Distance_t // contains the cutlermatrix for a state in the tree
 	movesList    []*node_t                                       // used in getMovementList to calculate moveable pieces from a state in the tree
 }
@@ -51,19 +55,29 @@ const worldSize uint64 = worldMax * worldMax * worldMax
 
 /*
  */
-func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc ProblemCache_t) {
-	psc := new(ProblemCache_t)
+func NewSolverCache(pc *ProblemCache_t) (sc SolverCache_t) {
+	psc := new(SolverCache_t)
 	sc = *psc
-	sc.puzzle = puzzle
-	sc.problemIndex = problemIdx
-	sc.shapemap = sc.GetProblem().GetShapemap()
-	sc.idSize = len(sc.shapemap)
-	sc.resultVoxel = &puzzle.Shapes[sc.GetProblem().Result.Id]
-	resi := NewVoxelinstance(sc.resultVoxel, 0)
-	sc.resultInstance = &resi
-	sc.instanceCache = make(map[uint]*VoxelInstance)
-	sc.movementCache = make(map[uint64]*maxVal_t)
+	sc.pc = pc
 	sc.movesList = make([]*node_t, 3*maxShapes)
+	return
+}
+
+/*
+ */
+func NewProblemCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (pc ProblemCache_t) {
+	ppc := new(ProblemCache_t)
+	pc = *ppc
+	pc.puzzle = puzzle
+	pc.problemIndex = problemIdx
+	pc.shapemap = pc.GetProblem().GetShapemap()
+	pc.idSize = len(pc.shapemap)
+	pc.resultVoxel = &puzzle.Shapes[pc.GetProblem().Result.Id]
+	resi := NewVoxelinstance(pc.resultVoxel, 0)
+	pc.resultInstance = &resi
+	pc.instanceCache = make(map[uint]*VoxelInstance)
+	pc.movementCache = make(map[uint64]*maxVal_t)
+	//	pc.movesList = make([]*node_t, 3*maxShapes)
 
 	resmap := *(resi.GetWorldmap())
 	// Baseline the resmap by creating 2 arrays:
@@ -86,59 +100,53 @@ func NewSolverCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (sc ProblemCache_t
 		lookupMap[pos] = idx + filledLen
 	}
 	//Now cache
-	sc.numPrimary = filledLen
-	sc.numSecondary = len(variHashSequence) + len(sc.shapemap)
-	sc.dlxLookupmap = lookupMap
+	pc.numPrimary = filledLen
+	pc.numSecondary = len(variHashSequence) + len(pc.shapemap)
+	pc.dlxLookupmap = lookupMap
 
 	return
 }
 
-func (sc ProblemCache_t) GetProblem() (pb *xmpuzzle.Problem) {
-	return &sc.puzzle.Problems[sc.problemIndex]
+func (pc ProblemCache_t) GetProblem() (pb *xmpuzzle.Problem) {
+	return &pc.puzzle.Problems[pc.problemIndex]
 }
 
-func (sc ProblemCache_t) GetNumPrimary() int {
-	return sc.numPrimary
+func (pc ProblemCache_t) GetNumPrimary() int {
+	return pc.numPrimary
 }
 
-func (sc ProblemCache_t) GetNumSecondary() int {
-	return sc.numSecondary
+func (pc ProblemCache_t) GetNumSecondary() int {
+	return pc.numSecondary
 }
 
-func (sc *ProblemCache_t) GetShapeInstance(id, rot burrutils.Id_t) (vi *VoxelInstance) {
+func (pc *ProblemCache_t) GetShapeInstance(id, rot burrutils.Id_t) (vi *VoxelInstance) {
 	// hash is based on 24 max rotations
 	hash := uint(id)*24 + uint(rot)
-	vi = sc.instanceCache[hash]
+	vi = pc.instanceCache[hash]
 	if vi == nil {
-		instance := NewVoxelinstance(&sc.puzzle.Shapes[sc.shapemap[id]], rot)
+		instance := NewVoxelinstance(&pc.puzzle.Shapes[pc.shapemap[id]], rot)
 		vi = &instance
-		sc.instanceCache[hash] = vi
+		pc.instanceCache[hash] = vi
 	}
 	return
 }
 
-func (sc ProblemCache_t) GetResultInstance() (vi *VoxelInstance) {
-	return sc.resultInstance
+func (pc ProblemCache_t) GetResultInstance() (vi *VoxelInstance) {
+	return pc.resultInstance
 }
 
 /*
 Calculate a unique uint64 hashvalue for movements
 */
-/*
-func (sc SolverCache_t) calcMovementHash(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (hash uint64) {
-	hash = (((uint64(id1)*24+uint64(rot1))*uint64(sc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
-	return
-}
-*/
-func (sc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (mx, my, mz burrutils.Distance_t) {
-	hash := (((uint64(id1)*24+uint64(rot1))*uint64(sc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
-	pmoves := sc.movementCache[hash]
+func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (mx, my, mz burrutils.Distance_t) {
+	hash := (((uint64(id1)*24+uint64(rot1))*uint64(pc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
+	pmoves := pc.movementCache[hash]
 	if pmoves == nil {
 		pmoves = new(maxVal_t)
-		sc.movementCache[hash] = pmoves
+		pc.movementCache[hash] = pmoves
 		// now start calculating
-		s1 := sc.GetShapeInstance(id1, rot1)
-		s2 := sc.GetShapeInstance(id2, rot2)
+		s1 := pc.GetShapeInstance(id1, rot1)
+		s2 := pc.GetShapeInstance(id2, rot2)
 		intersection := xmpuzzle.NewBoundingbox()
 		union := xmpuzzle.NewBoundingbox()
 		bb1 := s1.GetBoundingbox()
@@ -242,7 +250,7 @@ func (sc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 	return
 }
 
-func (sc *ProblemCache_t) updateCutlerMatrix(node *node_t) {
+func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	nPieces := len(node.root.rootDetails.pieceList)
 	nDims := 3 * nPieces
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
@@ -259,7 +267,7 @@ func (sc *ProblemCache_t) updateCutlerMatrix(node *node_t) {
 			} else {
 				o1 = i * 3
 				o2 = j * 3
-				sc.cutlerMatrix[j*nDims+i*3], sc.cutlerMatrix[j*nDims+i*3+1], sc.cutlerMatrix[j*nDims+i*3+2] = sc.getMaxValues(node.root.rootDetails.pieceList[i], node.root.rootDetails.rotationList[i], node.root.rootDetails.pieceList[j], node.root.rootDetails.rotationList[j], node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
+				sc.cutlerMatrix[j*nDims+i*3], sc.cutlerMatrix[j*nDims+i*3+1], sc.cutlerMatrix[j*nDims+i*3+2] = sc.pc.getMaxValues(node.root.rootDetails.pieceList[i], node.root.rootDetails.rotationList[i], node.root.rootDetails.pieceList[j], node.root.rootDetails.rotationList[j], node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
 			}
 		}
 	}
@@ -314,7 +322,7 @@ func (sc *ProblemCache_t) updateCutlerMatrix(node *node_t) {
 	}
 }
 
-func (sc *ProblemCache_t) getMovementList(node *node_t) []*node_t {
+func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	// pRow, pCol can only contain max nPieces, so better preallocate
 	// and reuse instead of doing a lot of append calls.
 	// movelist is a different beast and lenght is hard to predict.
@@ -393,11 +401,12 @@ func (sc *ProblemCache_t) getMovementList(node *node_t) []*node_t {
 	return movelist[:movelistLen]
 }
 
-func (sc ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bool {
+func (pc *ProblemCache_t) Solve(assembly *assembly_t, asmid int, c chan bool) bool {
 	DEBUG := false
 	if DEBUG {
 		fmt.Println("solving", asmid)
 	}
+	sc := NewSolverCache(pc)
 	var startNode *node_t
 	// parking is an array.
 	// push is the same as parking=append(parking, newnode)

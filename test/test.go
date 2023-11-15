@@ -37,7 +37,7 @@ func main() {
 	}
 	// we have an xml string now
 	puzzle := xmpuzzle.ParseXML(xmlstring)
-	cache := solver.NewSolverCache(&puzzle, 0)
+	cache := solver.NewProblemCache(&puzzle, 0)
 	assemblies := cache.GetAssemblies()
 	c := make(chan bool)
 	var res bool
