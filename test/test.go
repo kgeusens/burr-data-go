@@ -30,7 +30,7 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	xmlstring, err := xmpuzzle.ReadFile("./two face 3.xmpuzzle")
+	xmlstring, err := xmpuzzle.ReadFile("./chocolate dip.xmpuzzle")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -39,6 +39,7 @@ func main() {
 	puzzle := xmpuzzle.ParseXML(xmlstring)
 	cache := solver.NewProblemCache(&puzzle, 0)
 	assemblies := cache.GetAssemblies()
+	fmt.Println(len(assemblies), "assemblies to test")
 	for i, a := range assemblies {
 		cache.Solve(a, i)
 	}
