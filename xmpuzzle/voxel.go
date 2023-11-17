@@ -59,7 +59,7 @@ func (v Voxel) CalcSelfSymmetries() (symgroupID int) {
 
 	symmetryMatrix := 1 // rotation 0
 	rbb := NewBoundingbox()
-	next := burrutils.Id_t(1)
+	next := burrutils.Id_t(0)
 	rotidx := burrutils.Id_t(0)
 	rotlen := burrutils.Id_t(len(rotSequence))
 

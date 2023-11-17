@@ -8,12 +8,13 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	solver "github.com/kgeusens/go/burr-data/solver"
-	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
+	"github.com/kgeusens/go/burr-data/dlx"
+	"github.com/kgeusens/go/burr-data/solver"
+	"github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
-var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
+var cpuprofile = flag.String("cpuprofile", "cpu.prof", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "mem.prof", "write memory profile to `file`")
 
 func main() {
 
@@ -30,7 +31,39 @@ func main() {
 		defer pprof.StopCPUProfile()
 	}
 
-	xmlstring, err := xmpuzzle.ReadFile("./chocolate dip.xmpuzzle")
+	searchConfig := new(dlx.Searchconfig_t)
+	searchConfig.NumPrimary = 3
+	searchConfig.NumSecondary = 7
+	searchConfig.NumSolutions = 1
+	searchConfig.AddRow([]int{0, 3, 4}, "piece 1 position 1")
+	searchConfig.AddRow([]int{1, 3, 5}, "piece 1 position 2")
+	searchConfig.AddRow([]int{2, 3, 6}, "piece 1 position 3")
+	searchConfig.AddRow([]int{0, 4, 5, 6, 7}, "piece 2 position 1")
+	searchConfig.AddRow([]int{1, 5, 6, 8}, "piece 2 position 2")
+	searchConfig.AddRow([]int{2, 6, 9}, "piece 2 position 3")
+	searchConfig.AddRow([]int{0, 7, 8, 9}, "piece 3 position 1")
+	searchConfig.AddRow([]int{1, 8, 9}, "piece 3 position 2")
+	searchConfig.AddRow([]int{2, 9}, "piece 3 position 3")
+	res := searchConfig.Search()
+	fmt.Println(res)
+
+	/*
+		dlxMatrix, _ := dlx.New(3, 7)
+		dlx.AddRow(dlxMatrix, 0, 3, 4)
+		dlx.AddRow(dlxMatrix, 1, 3, 5)
+		dlx.AddRow(dlxMatrix, 2, 3, 6)
+		dlx.AddRow(dlxMatrix, 0, 4, 5, 6, 7)
+		dlx.AddRow(dlxMatrix, 1, 5, 6, 8)
+		dlx.AddRow(dlxMatrix, 2, 6, 9)
+		dlx.AddRow(dlxMatrix, 0, 7, 8, 9)
+		dlx.AddRow(dlxMatrix, 1, 8, 9)
+		dlx.AddRow(dlxMatrix, 2, 9)
+		dlx.ForEachSolution(dlxMatrix, func(row []int) {
+			fmt.Println(row)
+		})
+	*/
+
+	xmlstring, err := xmpuzzle.ReadFile("./3D Onat.xmpuzzle")
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -40,10 +73,17 @@ func main() {
 	cache := solver.NewProblemCache(&puzzle, 0)
 	assemblies := cache.GetAssemblies()
 	fmt.Println(len(assemblies), "assemblies to test")
-	for i, a := range assemblies {
-		cache.Solve(a, i)
-	}
-
+	/*
+		for i, a := range assemblies {
+			res := cache.Solve(a, i)
+			if res {
+				fmt.Println("Solution at", i)
+				//			for _, v := range a {
+				//				fmt.Println(*v)
+				//			}
+			}
+		}
+	*/
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {

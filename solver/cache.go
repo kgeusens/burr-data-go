@@ -103,7 +103,7 @@ func NewProblemCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (pc ProblemCache_
 	}
 	//Now cache
 	pc.numPrimary = filledLen
-	pc.numSecondary = len(variHashSequence) + len(pc.shapemap)
+	pc.numSecondary = len(variHashSequence)
 	pc.dlxLookupmap = lookupMap
 
 	return
@@ -493,6 +493,8 @@ func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
 		}
 	}
 	// SUCCESS
-	fmt.Println(asmid, "Solution found")
+	if DEBUG {
+		fmt.Println(asmid, "Solution found")
+	}
 	return true
 }

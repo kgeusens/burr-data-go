@@ -1,34 +1,29 @@
 package solver
 
 import (
-	"log"
-
-	dlx "github.com/Kappeh/dlx"
+	//	dlx "github.com/Kappeh/dlx"
+	"github.com/kgeusens/go/burr-data/dlx"
 )
 
 type assembly_t []*annotation_t
 
 func (sc ProblemCache_t) assemble() (solutions []assembly_t) {
 	tempMatrix := sc.getDLXmatrix()
-	dlxMatrix, err := dlx.New(sc.GetNumPrimary(), sc.GetNumSecondary())
-	if err != nil {
-		log.Fatal(err)
-	}
+	searchConfig := new(dlx.Searchconfig_t)
+	searchConfig.NumPrimary = sc.GetNumPrimary()
+	searchConfig.NumSecondary = sc.GetNumSecondary()
+	searchConfig.NumSolutions = 1000000
 	for _, entry := range *tempMatrix {
-		err := dlx.AddRow(dlxMatrix, *entry.row...)
-		if err != nil {
-			log.Fatal(err)
-		}
+		searchConfig.AddRow(*entry.row, entry.annotation)
 	}
-	count := 0
-	dlx.ForEachSolution(dlxMatrix, func(row []int) {
-		count++
-		solution := []*annotation_t{}
-		for _, rowid := range row {
-			solution = append(solution, (*tempMatrix)[rowid].annotation)
+	res := searchConfig.Search()
+	for i := range res {
+		solution := assembly_t{}
+		for _, row := range res[i] {
+			solution = append(solution, row.GetData().(*annotation_t))
 		}
 		solutions = append(solutions, solution)
-	})
+	}
 	return solutions
 }
 

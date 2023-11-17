@@ -63,12 +63,12 @@ func (sc ProblemCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burru
 	}
 	// Finally we need to add the optional column for the piece (regardless of rotation)
 	// This is at index "(size of resultvoxel) + pieceID"
-	result = append(result, resmap.Size()+int(shapeid))
+	//	result = append(result, resmap.Size()+int(shapeid))
 	slices.Sort(result)
 	return
 }
 
-func (sc ProblemCache_t) calcDLXmatrix() *matrix_t {
+func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 	matrix := make(matrix_t, 0)
 	// calculate rotaionLists
 	rotationLists := make([]int, sc.idSize)
@@ -86,11 +86,10 @@ func (sc ProblemCache_t) calcDLXmatrix() *matrix_t {
 	// sc.puzzle.Shapes[Id] -> voxel corresponding to Id
 	for idx, shape := range shapeDefs {
 		voxel := sc.puzzle.Shapes[shape.Id]
-		voxelSize = voxel.NewWorldmap().Size()
+		voxelSize = int(shape.Count)
 		symgroupID := voxel.CalcSelfSymmetries()
 		rotlist := burrutils.RotationsToCheck[symgroupID]
 		rotationLists[idx] = rotlist // no need to copy, this is just an integer bitmap
-		// need to imlplement breaker logic here
 		reducedRotlist = burrutils.ReduceRotations(rsymgroupID, rotlist)
 		rotlistLength := burrutils.BitmapSize(rotlist)
 		reducedRotlistLength := burrutils.BitmapSize(reducedRotlist)
@@ -137,7 +136,7 @@ func (sc ProblemCache_t) calcDLXmatrix() *matrix_t {
 							rowMap[idx] = append(rowMap[idx], row)
 							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(psid), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
 							// if this is the symmetry breaker, track a mapping of rownumber -> isReduced
-							if (i == breakerID) && (reducedRotlist|(1<<rotidx) == 1) {
+							if (i == breakerID) && (reducedRotlist&(1<<rotidx) > 0) {
 								breakerIsReduced[len(rowMap[idx])-1] = true
 							}
 						}
@@ -158,59 +157,53 @@ func (sc ProblemCache_t) calcDLXmatrix() *matrix_t {
 		nRows := len(rowMap[idx])
 		nCopies := int(shape.Count)
 		for c := 0; c < nCopies; c++ {
-			delta := 0
+			var delta int
 			for n := 0; n < nRows; n++ {
+				delta = 0
 				// clone the source row
 				newrow := row_t{}
 				newrow = append(newrow, rowMap[idx][n]...)
 				// create preamble (permutation limiter)
 				if c > 0 {
 					for j := 0; j < nRows-1-n; j++ {
-						// add (curRowsize + 1 + n + j) to row
-						newrow = append(newrow, curRowsize+1+n+j)
+						newrow = append(newrow, curRowsize+n+j)
 					}
-					delta += nRows
+					delta = nRows - 1
 				}
 				// Add the column of 1's (piece identity)
 				// For puzzles using a "min" value of occurences, this column should move to the primary columns, not the secondary
-				// add (curRowsize + delta)
 				newrow = append(newrow, curRowsize+delta)
 				delta += 1
 				// Add the [I] matrix (only if there are multiple copies and this is not the last one)
 				if c < nCopies-1 {
-					// add (curRowsize + delta + n)
 					newrow = append(newrow, curRowsize+delta+n)
-					delta += nRows
 				}
-				// we now have the row defined, and need to add it to the final matrix
-				// If this is the symmetry breaker, we still need to filter on the reduced rotations
 				newannotation := annotationMap[idx][n]
 				newannotation.shapeID = psid
-				matrix = append(matrix, &matrixEntry_t{&newrow, &newannotation})
+				// we now have the row defined, and need to add it to the final matrix
+				// KG : If this is the symmetry breaker, we still need to filter on the reduced rotations
+
+				if c > 0 {
+					matrix = append(matrix, &matrixEntry_t{&newrow, &newannotation})
+				} else {
+					if breakerID != i {
+						matrix = append(matrix, &matrixEntry_t{&newrow, &newannotation})
+					} else {
+						if breakerIsReduced[n] {
+							matrix = append(matrix, &matrixEntry_t{&newrow, &newannotation})
+						} else {
+							psid += 0
+						}
+					}
+				}
 			}
 			psid += 1
 			curRowsize += delta
 		}
 	}
 
-	for psid := range sc.shapemap {
-		rotlist := burrutils.HashToRotations(rotationLists[psid])
-		for _, rotidx := range rotlist {
-			rotatedInstance := sc.GetShapeInstance(burrutils.Id_t(psid), burrutils.Id_t(rotidx))
-			pbb := rotatedInstance.GetBoundingbox()
-
-			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
-				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
-					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
-						row := sc.calcDLXrow(burrutils.Id_t(psid), burrutils.Id_t(rotidx), x, y, z)
-						if len(row) > 0 {
-							matrix = append(matrix, &matrixEntry_t{&row, &annotation_t{burrutils.Id_t(psid), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}}})
-						}
-					}
-				}
-			}
-		}
-	}
+	// KG: quick and dirty patch of the secondary column size in the cache
+	sc.numSecondary = curRowsize - sc.GetNumPrimary()
 
 	return &matrix
 }
