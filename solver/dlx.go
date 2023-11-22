@@ -9,10 +9,11 @@ import (
 type row_t []int
 
 type annotation_t struct {
-	shapeID  burrutils.Id_t
-	rotation burrutils.Id_t
-	hotspot  [3]burrutils.Distance_t
-	offset   [3]burrutils.Distance_t
+	shapeID    burrutils.Id_t
+	instanceID burrutils.Id_t
+	rotation   burrutils.Id_t
+	hotspot    [3]burrutils.Distance_t
+	offset     [3]burrutils.Distance_t
 }
 
 type matrixEntry_t struct {
@@ -65,6 +66,7 @@ func (sc ProblemCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burru
 	return
 }
 
+/*
 func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 	matrix := make(matrix_t, 0)
 	// calculate rotaionLists
@@ -151,8 +153,8 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 
 	return &matrix
 }
+*/
 
-/*
 func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 	matrix := make(matrix_t, 0)
 	// calculate rotaionLists
@@ -219,7 +221,7 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 						row = sc.calcDLXrow(psid, rotidx, x, y, z)
 						if len(row) > 0 {
 							rowMap[idx] = append(rowMap[idx], row)
-							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(idx), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
+							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(idx), 0, rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
 							// if this is the symmetry breaker, track a mapping of rownumber -> isReduced
 							if (i == breakerID) && (reducedRotlist&(1<<rotidx) > 0) {
 								breakerIsReduced[len(rowMap[idx])-1] = true
@@ -249,22 +251,28 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 				newrow := row_t{}
 				newrow = append(newrow, rowMap[idx][n]...)
 				// create preamble (permutation limiter)
-				if c > 0 {
-					for j := 0; j < nRows-1-n; j++ {
-						newrow = append(newrow, curRowsize+n+j)
+				/*
+					if c > 0 {
+						for j := 0; j < nRows-1-n; j++ {
+							newrow = append(newrow, curRowsize+n+j)
+						}
+						delta = nRows - 1
 					}
-					delta = nRows - 1
-				}
+				*/
 				// Add the column of 1's (piece identity)
 				// For puzzles using a "min" value of occurences, this column should move to the primary columns, not the secondary
-				newrow = append(newrow, curRowsize+delta)
-				delta += 1
+				/*
+					newrow = append(newrow, curRowsize+delta)
+					delta += 1
+				*/
 				// Add the [I] matrix (only if there are multiple copies and this is not the last one)
-				if c < nCopies-1 {
-					newrow = append(newrow, curRowsize+delta+n)
-				}
+				/*
+					if c < nCopies-1 {
+						newrow = append(newrow, curRowsize+delta+n)
+					}
+				*/
 				newannotation := annotationMap[idx][n]
-				newannotation.shapeID = psid
+				newannotation.instanceID = burrutils.Id_t(c)
 				// we now have the row defined, and need to add it to the final matrix
 				// KG : If this is the symmetry breaker, we still need to filter on the reduced rotations
 
@@ -288,11 +296,10 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 	}
 
 	// KG: quick and dirty patch of the secondary column size in the cache
-	sc.numSecondary = curRowsize - sc.GetNumPrimary()
+	//	sc.numSecondary = curRowsize - sc.GetNumPrimary()
 
 	return &matrix
 }
-*/
 
 func (sc *ProblemCache_t) getDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {

@@ -19,6 +19,362 @@ type Row_t struct {
 	data           any
 }
 
+type nodeindex_t int
+type columnindex_t int
+
+type solutioncache_t struct {
+	holes     int  // number of holes in the solution
+	tmin      int  // total of all minimums
+	tmax      int  // total of all maximums
+	usesRange bool // true if any of the parts uses a range (min != max)
+}
+
+type Searchconfig_t struct {
+	NumSolutions  int
+	problemCache  ProblemCache_t
+	rows          []Row_t
+	solutionCache solutioncache_t
+}
+
+func NewSearchconfig(pc ProblemCache_t) (sc Searchconfig_t) {
+	sc.problemCache = pc
+
+	tminSize := 0
+	tmaxSize := 0
+	usesRange := false
+	for idx, shape := range pc.GetProblem().Shapes {
+		psize := pc.puzzle.Shapes[pc.GetProblem().Shapes[idx].Id].Size()
+		sc.solutionCache.tmin += int(shape.GetPartMinimum())
+		sc.solutionCache.tmax += int(shape.GetPartMaximum())
+		tminSize += int(shape.GetPartMinimum()) * psize
+		tmaxSize += int(shape.GetPartMaximum()) * psize
+		usesRange = usesRange || (shape.GetPartMinimum() != shape.GetPartMaximum())
+	}
+	sc.solutionCache.usesRange = usesRange
+	if !usesRange {
+		sc.solutionCache.holes = pc.numPrimary + pc.numSecondary - tminSize
+	} else {
+		sc.solutionCache.holes = 0xFFFFFF
+	}
+	return
+}
+
+func (sc *Searchconfig_t) NumPrimary() nodeindex_t {
+	return nodeindex_t(sc.problemCache.numPrimary) + nodeindex_t(sc.solutionCache.tmin)
+}
+
+func (sc *Searchconfig_t) NumSecondary() nodeindex_t {
+	return nodeindex_t(sc.problemCache.numSecondary) + nodeindex_t(sc.solutionCache.tmax) - nodeindex_t(sc.solutionCache.tmin)
+}
+
+type result_t struct {
+	index int
+	data  any
+}
+
+func (r *result_t) GetData() any {
+	return r.data
+}
+
+func (sc *Searchconfig_t) AddRow(columns []int, data any) {
+	if sc.rows == nil {
+		sc.rows = make([]Row_t, 0)
+	}
+	sc.rows = append(sc.rows, Row_t{columns, data})
+}
+
+func (config *Searchconfig_t) Search() [][]result_t {
+	numSolutions := config.NumSolutions
+	//	numPrimary, numSecondary, rows := config.NumPrimary(), config.NumSecondary(), config.rows
+	headerSize := config.NumPrimary() + config.NumSecondary() + nodeindex_t(config.solutionCache.tmax)
+	root := columnindex_t(0)
+
+	numNodes := nodeindex_t(0)
+	for i := range config.rows {
+		numNodes += nodeindex_t(len(config.rows[i].coveredColumns)) + 1
+	}
+
+	solutions := [][]result_t{{}}
+	nleft := make([]nodeindex_t, numNodes+headerSize+1)
+	nright := make([]nodeindex_t, numNodes+headerSize+1)
+	nup := make([]nodeindex_t, numNodes+headerSize+1)
+	ndown := make([]nodeindex_t, numNodes+headerSize+1)
+	ncol := make([]columnindex_t, numNodes+headerSize+1)
+	nindex := make([]int, numNodes+headerSize+1)
+	ndata := make([]any, numNodes+headerSize+1)
+	chead := make([]nodeindex_t, headerSize+1)
+	clen := make([]nodeindex_t, headerSize+1)
+	cprev := make([]columnindex_t, headerSize+1)
+	cnext := make([]columnindex_t, headerSize+1)
+
+	currentSearchState := forwardState
+	running := true
+	level := 0
+	choice := make([]nodeindex_t, 100)
+	var bestCol columnindex_t
+	var currentNode nodeindex_t
+
+	var readColumnNames = func() {
+		// Skip root node
+		curColIndex := columnindex_t(1)
+		curNodeIndex := nodeindex_t(0)
+
+		for i := nodeindex_t(0); i < config.NumPrimary(); i++ {
+			head := curNodeIndex
+			nup[head] = head
+			ndown[head] = head
+
+			column := curColIndex
+			chead[column] = head
+			clen[column] = 0
+
+			cprev[column] = column - 1
+			cnext[column-1] = column
+
+			curColIndex += 1
+			curNodeIndex += 1
+		}
+		// Link the last primary constraint to wrap back into the root
+		cnext[curColIndex-1] = root
+		cprev[root] = curColIndex - 1
+
+		// The secondary columns do not wrap in a circle but are standalone
+		for i := nodeindex_t(0); i < config.NumSecondary(); i++ {
+			head := curNodeIndex
+			nup[head] = head
+			ndown[head] = head
+
+			column := curColIndex
+			chead[column] = head
+			clen[column] = 0
+			cprev[column] = column
+			cnext[column] = column
+
+			curColIndex += 1
+			curNodeIndex += 1
+		}
+	}
+
+	var readRows = func() {
+		// we need to assign this row to the correct column (piecenode)
+		// to do that we need to get the shapeID and the instanceID from row.data
+		curNodeIndex := nodeindex_t(config.NumPrimary() + config.NumSecondary() + 1)
+
+		for i, row := range config.rows {
+			var rowStart nodeindex_t
+
+			annot := row.data.(annotation_t)
+			partID := annot.shapeID
+			partInstance := annot.instanceID
+			// create the "piecenode" that represents the piece and put it in the correct column
+			// This node is the start of the nodes of the row
+			{
+				node := curNodeIndex
+				nleft[node] = node
+				nright[node] = node
+				ndown[node] = node
+				nup[node] = node
+				nindex[node] = i
+				ndata[node] = row.data
+				rowStart = node
+				// figure out the column
+				var col columnindex_t
+				if partInstance < burrutils.Id_t(config.problemCache.GetProblem().Shapes[partID].GetPartMinimum()) {
+					// its a mandatory piece (primary)
+					col = 1 + columnindex_t(config.problemCache.numPrimary) + columnindex_t(partInstance)
+					for i := 0; i < int(partID); i++ {
+						col += columnindex_t(config.problemCache.GetProblem().Shapes[i].GetPartMinimum())
+					}
+				}
+				ncol[node] = col
+				// now insert it into its column
+				nup[node] = nup[chead[col]]
+				ndown[nup[chead[col]]] = node
+				nup[chead[col]] = node
+				ndown[node] = chead[col]
+				clen[col] += 1
+				curNodeIndex += 1
+			}
+			// Now add the row entries
+			for _, columnIndex := range row.coveredColumns {
+				// We need to make a distinction between primary and secondary to assign to the correct columns
+				// Prep the node
+				node := curNodeIndex
+				nleft[node] = node
+				nright[node] = node
+				ndown[node] = node
+				nup[node] = node
+				nindex[node] = i
+				ndata[node] = row.data
+				// we already prep'ed a piecenode so we just continue adding to the circle
+				nleft[node] = node - 1
+				nright[node-1] = node
+				// now check if this is a primary, or secondary entry
+				var col columnindex_t
+				if columnIndex < config.problemCache.numPrimary {
+					col = 1 + columnindex_t(columnIndex)
+				} else {
+					col = 1 + columnindex_t(config.solutionCache.tmax+columnIndex)
+				}
+				// now insert the node in the correct column
+				ncol[node] = col
+				nup[node] = nup[chead[col]]
+				ndown[nup[chead[col]]] = node
+				nup[chead[col]] = node
+				ndown[node] = chead[col]
+				clen[col] += 1
+				curNodeIndex += 1
+			}
+			// I think this is no longer needed
+			nleft[rowStart] = curNodeIndex - 1
+			nright[curNodeIndex-1] = rowStart
+		}
+	}
+
+	var cover = func(c columnindex_t) {
+		// Unlink column
+		cnext[cprev[c]] = cnext[c]
+		cprev[cnext[c]] = cprev[c]
+
+		// From top to bottom, left to right unlink every row node from its column
+		for rr := ndown[chead[c]]; rr != chead[c]; rr = ndown[rr] {
+			for nn := nright[rr]; nn != rr; nn = nright[nn] {
+				ndown[nup[nn]] = ndown[nn]
+				nup[ndown[nn]] = nup[nn]
+
+				clen[ncol[nn]] -= 1
+			}
+		}
+	}
+
+	var uncover = func(c columnindex_t) {
+		// From bottom to top, right to left relink every row node to its column
+		//		var uu, dd nodeindex_t
+		for rr := nup[chead[c]]; rr != chead[c]; rr = nup[rr] {
+			for nn := nleft[rr]; nn != rr; nn = nleft[nn] {
+
+				ndown[nup[nn]] = nn
+				nup[ndown[nn]] = nn
+
+				clen[ncol[nn]] += 1
+			}
+		}
+
+		// Unlink column
+		cnext[cprev[c]] = c
+		cprev[cnext[c]] = c
+	}
+
+	var pickBestColum = func() {
+		lowestLen := clen[cnext[root]]
+		lowest := cnext[root]
+
+		for curCol := cnext[root]; curCol != root; curCol = cnext[curCol] {
+			length := clen[curCol]
+			if length < lowestLen {
+				lowestLen = length
+				lowest = curCol
+			}
+		}
+
+		bestCol = lowest
+	}
+
+	var recordSolution = func() {
+		results := []result_t{}
+		for l := 0; l <= level; l++ {
+			node := choice[l]
+			results = append(results, result_t{nindex[node], ndata[node]})
+		}
+		solutions = append(solutions, results)
+	}
+
+	//	stateMethods := []func(){forward, advance, backup, recover, done}
+
+	readColumnNames()
+	readRows()
+
+	for running {
+		switch currentSearchState {
+		case forwardState:
+			// pick the best column to process, and select the first node of the first row (currentNode)
+			pickBestColum()
+			cover(bestCol)
+			currentNode = ndown[chead[bestCol]]
+			choice[level] = currentNode
+			currentSearchState = advanceState
+		case advanceState:
+			// analyze the selected row from the previous step
+			// either go to:
+			//   backupState (deadend, rollback because there is no row to process)
+			//   doneState (solution found, but we reached the limit of numSolutions to find)
+			//   recoverState (solution found, we need to move on to find more solutions)
+			//   forwardState (no solution yet, no deadend yet, go to the next column)
+			if currentNode == chead[bestCol] {
+				// if the currentNode == the header, then this column has 0 selectable rows
+				currentSearchState = backupState
+				break
+			}
+			for pp := nright[currentNode]; pp != currentNode; pp = nright[pp] {
+				// cover all the columns for the row containing currentNode
+				cover(ncol[pp])
+			}
+			if cnext[root] == root {
+				// if there are no remaining columns to process, we have a solution
+				recordSolution()
+				if len(solutions) == numSolutions {
+					currentSearchState = doneState
+				} else {
+					currentSearchState = recoverState
+				}
+				break
+			}
+			level = level + 1
+			currentSearchState = forwardState
+		case backupState:
+			// recover from a deadend, go a level back
+			// either go to:
+			//    doneState (if we are back at level 0, we are done)
+			//    recoverState (continue the hunt for a solution)
+			uncover(bestCol)
+			if level == 0 {
+				currentSearchState = doneState
+				break
+			}
+			level = level - 1
+			currentNode = choice[level]
+			bestCol = ncol[currentNode]
+			currentSearchState = recoverState
+		case recoverState:
+			// uncover the current row
+			// move on to the next potential row for the current column
+			// go to:
+			//   advanceState (analyze the selected row)
+			for pp := nleft[currentNode]; pp != currentNode; pp = nleft[pp] {
+				uncover(ncol[pp])
+			}
+			currentNode = ndown[currentNode]
+			choice[level] = currentNode
+			currentSearchState = advanceState
+		case doneState:
+			// we're done, go home
+			running = false
+		}
+	}
+
+	return solutions
+}
+
+/*
+import (
+	burrutils "github.com/kgeusens/go/burr-data/burrutils"
+)
+
+type Row_t struct {
+	coveredColumns []int
+	data           any
+}
+
 type piecePosition_t struct {
 	x, y, z burrutils.Distance_t
 	rot     burrutils.Id_t
@@ -209,72 +565,6 @@ func (config *Searchconfig_t) Search() [][]result_t {
 			}
 		}
 	}
-	/*
-		var getPieceInformation = func(node nodeindex_t) (x, y, z burrutils.Distance_t, rot burrutils.Id_t, piece nodeindex_t) {
-			for i := len(piecePositions) - 1; i >= 0; i-- {
-				if piecePositions[i].row <= node {
-					x = piecePositions[i].x
-					y = piecePositions[i].y
-					z = piecePositions[i].z
-					rot = piecePositions[i].rot
-					piece = piecePositions[i].piece
-				}
-			}
-			return
-		}
-	*/
-	/*
-		var addRangeNode = func(col, piecenode nodeindex_t, wg int) {
-			newnode := nodeindex_t(len(left))
-
-			right = append(right, piecenode)
-			left = append(left, left[piecenode])
-			right[left[piecenode]] = newnode
-			left[piecenode] = newnode
-
-			up = append(up, up[col])
-			down = append(down, col)
-
-			down[up[col]] = newnode
-			up[col] = newnode
-
-			colCount = append(colCount, col)
-
-			weight = append(weight, nodeindex_t(wg))
-			colCount[col] += nodeindex_t(wg)
-		}
-	*/
-	/*
-		var remove_column = func(c nodeindex_t) {
-			j := c
-			right[left[j]] = right[j]
-			left[right[j]] = left[j]
-			j = down[j]
-			for j != c {
-				right[left[j]] = right[j]
-				left[right[j]] = left[j]
-				j = down[j]
-			}
-		}
-
-		var remove_row = func(r nodeindex_t) {
-			j := r
-			colCount[colCount[j]] -= weight[j]
-			u := up[j]
-			d := down[j]
-			up[d] = u
-			down[u] = d
-			j = right[j]
-			for j != r {
-				colCount[colCount[j]] -= weight[j]
-				u := up[j]
-				d := down[j]
-				up[d] = u
-				down[u] = d
-				j = right[j]
-			}
-		}
-	*/
 	var open_column_conditions_fulfillable = func() bool {
 		for col := right[0]; col > 0; col = right[col] {
 			if weight[col] > max[col] {
@@ -663,3 +953,4 @@ func (config *Searchconfig_t) Search() [][]result_t {
 
 	return nil
 }
+*/

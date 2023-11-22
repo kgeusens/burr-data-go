@@ -15,7 +15,8 @@ func (sc ProblemCache_t) assemble() (solutions []assembly_t) {
 	for i := range res {
 		solution := assembly_t{}
 		for _, row := range res[i] {
-			solution = append(solution, row.GetData().(*annotation_t))
+			annot := row.GetData().(annotation_t)
+			solution = append(solution, &annot)
 		}
 		solutions = append(solutions, solution)
 	}
