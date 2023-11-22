@@ -164,7 +164,7 @@ func (config *Searchconfig_t) Search() [][]result_t {
 			var rowStart nodeindex_t
 
 			annot := row.data.(annotation_t)
-			partID := annot.shapeID
+			partID := annot.partID
 			partInstance := annot.instanceID
 			// create the "piecenode" that represents the piece and put it in the correct column
 			// This node is the start of the nodes of the row

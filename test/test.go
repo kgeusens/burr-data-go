@@ -56,17 +56,15 @@ func main() {
 	cache := solver.NewProblemCache(&puzzle, 0)
 	assemblies := cache.GetAssemblies()
 	fmt.Println(len(assemblies), "assemblies to test")
-	/*
-		for i, a := range assemblies {
-			res := cache.Solve(a, i)
-			if res {
-				fmt.Println("Solution at", i)
-				//			for _, v := range a {
-				//				fmt.Println(*v)
-				//			}
-			}
+	for i, a := range assemblies {
+		res := cache.Solve(a, i)
+		if res {
+			fmt.Println("Solution at", i)
+			//			for _, v := range a {
+			//				fmt.Println(*v)
+			//			}
 		}
-	*/
+	}
 	if *memprofile != "" {
 		f, err := os.Create(*memprofile)
 		if err != nil {

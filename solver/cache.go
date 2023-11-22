@@ -257,19 +257,20 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	nDims := 3 * nPieces
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
 	//	numRow := nPieces * 3
-	var o1, o2 int
-	var i, j, k, dim, a int
-	for j = 0; j < nPieces; j++ {
-		for i = 0; i < nPieces; i++ {
+	//	var o1, o2 int
+	//	var i, j, k, dim, a int
+	m := &sc.cutlerMatrix
+	for j := 0; j < nPieces; j++ {
+		for i := 0; i < nPieces; i++ {
 			// diagonal is 0
 			if i == j {
-				sc.cutlerMatrix[j*nDims+i*3] = 0
-				sc.cutlerMatrix[j*nDims+i*3+1] = 0
-				sc.cutlerMatrix[j*nDims+i*3+2] = 0
+				m[j*nDims+i*3] = 0
+				m[j*nDims+i*3+1] = 0
+				m[j*nDims+i*3+2] = 0
 			} else {
-				o1 = i * 3
-				o2 = j * 3
-				sc.cutlerMatrix[j*nDims+i*3], sc.cutlerMatrix[j*nDims+i*3+1], sc.cutlerMatrix[j*nDims+i*3+2] = sc.pc.getMaxValues(node.root.rootDetails.pieceList[i], node.root.rootDetails.rotationList[i], node.root.rootDetails.pieceList[j], node.root.rootDetails.rotationList[j], node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
+				o1 := i * 3
+				o2 := j * 3
+				m[j*nDims+i*3], m[j*nDims+i*3+1], m[j*nDims+i*3+2] = sc.pc.getMaxValues(node.root.rootDetails.pieceList[i], node.root.rootDetails.rotationList[i], node.root.rootDetails.pieceList[j], node.root.rootDetails.rotationList[j], node.offsetList[o2]-node.offsetList[o1], node.offsetList[o2+1]-node.offsetList[o1+1], node.offsetList[o2+2]-node.offsetList[o1+2])
 			}
 		}
 	}
@@ -280,37 +281,37 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	var tmpval *burrutils.Distance_t
 	for again {
 		again = false
-		for j = 0; j < nPieces; j++ {
-			for i = 0; i < nPieces; i++ {
+		for j := 0; j < nPieces; j++ {
+			for i := 0; i < nPieces; i++ {
 				if i == j {
 					continue
 				}
 				ijStart = j*nDims + i*3
 				kjStart = j*nDims - 3
 				ikStart = i*3 - nDims
-				for k = 0; k < nPieces; k++ {
+				for k := 0; k < nPieces; k++ {
 					kjStart += 3
 					ikStart += nDims
 					if k == j {
 						continue
 					}
-					for dim = 0; dim < 3; dim++ {
-						min = sc.cutlerMatrix[ikStart+dim] + sc.cutlerMatrix[kjStart+dim]
-						tmpval = &sc.cutlerMatrix[ijStart+dim]
+					for dim := 0; dim < 3; dim++ {
+						min = m[ikStart+dim] + m[kjStart+dim]
+						tmpval = &m[ijStart+dim]
 						if min < *tmpval {
 							*tmpval = min
 							// optimize: check if this update impacts already updated values
 							if !again {
-								for a = 0; a < i; a++ {
-									if sc.cutlerMatrix[j*nDims+a*3+dim] > sc.cutlerMatrix[i*nDims+a*3+dim]+*tmpval {
+								for a := 0; a < i; a++ {
+									if m[j*nDims+a*3+dim] > m[i*nDims+a*3+dim]+*tmpval {
 										again = true
 										break
 									}
 								}
 							}
 							if !again {
-								for a = 0; a < j; a++ {
-									if sc.cutlerMatrix[a*nDims+i*3+dim] > sc.cutlerMatrix[a*nDims+j*3+dim]+*tmpval {
+								for a := 0; a < j; a++ {
+									if m[a*nDims+i*3+dim] > m[a*nDims+j*3+dim]+*tmpval {
 										again = true
 										break
 									}
