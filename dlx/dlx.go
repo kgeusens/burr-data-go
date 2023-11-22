@@ -24,23 +24,6 @@ type Row_t struct {
 type nodeindex_t int
 type columnindex_t int
 
-type node_t struct {
-	left  nodeindex_t
-	right nodeindex_t
-	up    nodeindex_t
-	down  nodeindex_t
-	col   columnindex_t
-	index int
-	data  any
-}
-
-type column_t struct {
-	head nodeindex_t
-	len  int
-	prev columnindex_t
-	next columnindex_t
-}
-
 type Searchconfig_t struct {
 	NumPrimary   int
 	NumSecondary int
@@ -69,18 +52,28 @@ func (config *Searchconfig_t) Search() [][]result_t {
 	numPrimary, numSecondary, rows := config.NumPrimary, config.NumSecondary, config.rows
 	root := columnindex_t(0)
 
-	colArray := make([]column_t, numPrimary+numSecondary+1)
 	numNodes := 0
 	for i := range config.rows {
 		numNodes += len(rows[i].coveredColumns)
 	}
-	nodeArray := make([]node_t, numNodes+numPrimary+numSecondary+1)
+
 	solutions := [][]result_t{{}}
+	nleft := make([]nodeindex_t, numNodes+numPrimary+numSecondary+1)
+	nright := make([]nodeindex_t, numNodes+numPrimary+numSecondary+1)
+	nup := make([]nodeindex_t, numNodes+numPrimary+numSecondary+1)
+	ndown := make([]nodeindex_t, numNodes+numPrimary+numSecondary+1)
+	ncol := make([]columnindex_t, numNodes+numPrimary+numSecondary+1)
+	nindex := make([]int, numNodes+numPrimary+numSecondary+1)
+	ndata := make([]any, numNodes+numPrimary+numSecondary+1)
+	chead := make([]nodeindex_t, numPrimary+numSecondary+1)
+	clen := make([]nodeindex_t, numPrimary+numSecondary+1)
+	cprev := make([]columnindex_t, numPrimary+numSecondary+1)
+	cnext := make([]columnindex_t, numPrimary+numSecondary+1)
 
 	currentSearchState := forwardState
 	running := true
 	level := 0
-	choice := make([]node_t, 100)
+	choice := make([]nodeindex_t, 100)
 	var bestCol columnindex_t
 	var currentNode nodeindex_t
 
@@ -91,15 +84,15 @@ func (config *Searchconfig_t) Search() [][]result_t {
 
 		for i := 0; i < numPrimary; i++ {
 			head := curNodeIndex
-			nodeArray[head].up = head
-			nodeArray[head].down = head
+			nup[head] = head
+			ndown[head] = head
 
 			column := curColIndex
-			colArray[column].head = head
-			colArray[column].len = 0
+			chead[column] = head
+			clen[column] = 0
 
-			colArray[column].prev = column - 1
-			colArray[column-1].next = column
+			cprev[column] = column - 1
+			cnext[column-1] = column
 
 			//			colArray[curColIndex] = column
 			curColIndex += 1
@@ -108,19 +101,19 @@ func (config *Searchconfig_t) Search() [][]result_t {
 
 		lastCol := curColIndex - 1
 		// Link the last primary constraint to wrap back into the root
-		colArray[lastCol].next = root
-		colArray[root].prev = lastCol
+		cnext[lastCol] = root
+		cprev[root] = lastCol
 
 		for i := 0; i < numSecondary; i++ {
 			head := curNodeIndex
-			nodeArray[head].up = head
-			nodeArray[head].down = head
+			nup[head] = head
+			ndown[head] = head
 
 			column := curColIndex
-			colArray[column].head = head
-			colArray[column].len = 0
-			colArray[column].prev = column
-			colArray[column].next = column
+			chead[column] = head
+			clen[column] = 0
+			cprev[column] = column
+			cnext[column] = column
 
 			//			colArray[curColIndex] = column
 			curColIndex += 1
@@ -137,90 +130,80 @@ func (config *Searchconfig_t) Search() [][]result_t {
 
 			for _, columnIndex := range row.coveredColumns {
 				node := curNodeIndex
-				nodeArray[node].left = node
-				nodeArray[node].right = node
-				nodeArray[node].down = node
-				nodeArray[node].up = node
-				nodeArray[node].index = i
-				nodeArray[node].data = row.data
+				nleft[node] = node
+				nright[node] = node
+				ndown[node] = node
+				nup[node] = node
+				nindex[node] = i
+				ndata[node] = row.data
 
 				//				nodeArray[curNodeIndex] = node
 
 				if rowStart == 0 {
 					rowStart = node
 				} else {
-					nodeArray[node].left = node - 1
-					nodeArray[node-1].right = node
+					nleft[node] = node - 1
+					nright[node-1] = node
 				}
 
-				col := colArray[columnIndex+1]
-				nodeArray[node].col = columnindex_t(columnIndex + 1)
+				//				col := colArray[columnIndex+1]
+				ncol[node] = columnindex_t(columnIndex + 1)
 
-				nodeArray[node].up = nodeArray[col.head].up
-				nodeArray[nodeArray[col.head].up].down = node
+				nup[node] = nup[chead[columnIndex+1]]
+				ndown[nup[chead[columnIndex+1]]] = node
 
-				nodeArray[col.head].up = node
-				nodeArray[node].down = col.head
+				nup[chead[columnIndex+1]] = node
+				ndown[node] = chead[columnIndex+1]
 
-				colArray[columnIndex+1].len += 1
+				clen[columnIndex+1] += 1
 				curNodeIndex += 1
 			}
 
-			nodeArray[rowStart].left = curNodeIndex - 1
-			nodeArray[curNodeIndex-1].right = rowStart
+			nleft[rowStart] = curNodeIndex - 1
+			nright[curNodeIndex-1] = rowStart
 		}
 	}
 
-	var cover = func(c *column_t) {
-		l := c.prev
-		r := c.next
-
+	var cover = func(c columnindex_t) {
 		// Unlink column
-		l.next = r
-		r.prev = l
+		cnext[cprev[c]] = cnext[c]
+		cprev[cnext[c]] = cprev[c]
 
-		// From to to bottom, left to right unlink every row node from its column
-		for rr := c.head.down; rr != c.head; rr = rr.down {
-			for nn := rr.right; nn != rr; nn = nn.right {
-				uu := nn.up
-				dd := nn.down
+		// From top to bottom, left to right unlink every row node from its column
+		for rr := ndown[chead[c]]; rr != chead[c]; rr = ndown[rr] {
+			for nn := nright[rr]; nn != rr; nn = nright[nn] {
+				ndown[nup[nn]] = ndown[nn]
+				nup[ndown[nn]] = nup[nn]
 
-				uu.down = dd
-				dd.up = uu
-
-				nn.col.len -= 1
+				clen[ncol[nn]] -= 1
 			}
 		}
 	}
 
-	var uncover = func(c *column_t) {
+	var uncover = func(c columnindex_t) {
 		// From bottom to top, right to left relink every row node to its column
-		for rr := c.head.up; rr != c.head; rr = rr.up {
-			for nn := rr.left; nn != rr; nn = nn.left {
-				uu := nn.up
-				dd := nn.down
+		//		var uu, dd nodeindex_t
+		for rr := nup[chead[c]]; rr != chead[c]; rr = nup[rr] {
+			for nn := nleft[rr]; nn != rr; nn = nleft[nn] {
 
-				uu.down = nn
-				dd.up = nn
+				ndown[nup[nn]] = nn
+				nup[ndown[nn]] = nn
 
-				nn.col.len += 1
+				clen[ncol[nn]] += 1
 			}
 		}
 
-		l := c.prev
-		r := c.next
-
 		// Unlink column
-		l.next = c
-		r.prev = c
+		cnext[cprev[c]] = c
+		cprev[cnext[c]] = c
 	}
 
 	var pickBestColum = func() {
-		lowestLen := root.next.len
-		lowest := root.next
+		lowestLen := clen[cnext[root]]
+		lowest := cnext[root]
 
-		for curCol := root.next; curCol != root; curCol = curCol.next {
-			length := curCol.len
+		for curCol := cnext[root]; curCol != root; curCol = cnext[curCol] {
+			length := clen[curCol]
 			if length < lowestLen {
 				lowestLen = length
 				lowest = curCol
@@ -230,85 +213,86 @@ func (config *Searchconfig_t) Search() [][]result_t {
 		bestCol = lowest
 	}
 
-	var forward = func() {
-		pickBestColum()
-		cover(bestCol)
-
-		currentNode = bestCol.head.down
-		choice[level] = currentNode
-
-		currentSearchState = advanceState
-	}
-
 	var recordSolution = func() {
 		results := []result_t{}
 		for l := 0; l <= level; l++ {
 			node := choice[l]
-			results = append(results, result_t{node.index, node.data})
+			results = append(results, result_t{nindex[node], ndata[node]})
 		}
 		solutions = append(solutions, results)
 	}
 
-	var advance = func() {
-		if currentNode == bestCol.head {
-			currentSearchState = backupState
-			return
-		}
-
-		for pp := currentNode.right; pp != currentNode; pp = pp.right {
-			cover(pp.col)
-		}
-
-		if root.next == root {
-			recordSolution()
-			if len(solutions) == numSolutions {
-				currentSearchState = doneState
-			} else {
-				currentSearchState = recoverState
-			}
-			return
-		}
-
-		level = level + 1
-		currentSearchState = forwardState
-	}
-
-	var backup = func() {
-		uncover(bestCol)
-
-		if level == 0 {
-			currentSearchState = doneState
-			return
-		}
-
-		level = level - 1
-
-		currentNode = choice[level]
-		bestCol = currentNode.col
-
-		currentSearchState = recoverState
-	}
-
-	var recover = func() {
-		for pp := currentNode.left; pp != currentNode; pp = pp.left {
-			uncover(pp.col)
-		}
-		currentNode = currentNode.down
-		choice[level] = currentNode
-		currentSearchState = advanceState
-	}
-
-	var done = func() {
-		running = false
-	}
-
-	stateMethods := []func(){forward, advance, backup, recover, done}
+	//	stateMethods := []func(){forward, advance, backup, recover, done}
 
 	readColumnNames()
 	readRows()
 
 	for running {
-		stateMethods[currentSearchState]()
+		switch currentSearchState {
+		case forwardState:
+			// pick the best column to process, and select the first node of the first row (currentNode)
+			pickBestColum()
+			cover(bestCol)
+			currentNode = ndown[chead[bestCol]]
+			choice[level] = currentNode
+			currentSearchState = advanceState
+		case advanceState:
+			// analyze the selected row from the previous step
+			// either go to:
+			//   backupState (deadend, rollback because there is no row to process)
+			//   doneState (solution found, but we reached the limit of numSolutions to find)
+			//   recoverState (solution found, we need to move on to find more solutions)
+			//   forwardState (no solution yet, no deadend yet, go to the next column)
+			if currentNode == chead[bestCol] {
+				// if the currentNode == the header, then this column has 0 selectable rows
+				currentSearchState = backupState
+				break
+			}
+			for pp := nright[currentNode]; pp != currentNode; pp = nright[pp] {
+				// cover all the columns for the row containing currentNode
+				cover(ncol[pp])
+			}
+			if cnext[root] == root {
+				// if there are no remaining columns to process, we have a solution
+				recordSolution()
+				if len(solutions) == numSolutions {
+					currentSearchState = doneState
+				} else {
+					currentSearchState = recoverState
+				}
+				break
+			}
+			level = level + 1
+			currentSearchState = forwardState
+		case backupState:
+			// recover from a deadend, go a level back
+			// either go to:
+			//    doneState (if we are back at level 0, we are done)
+			//    recoverState (continue the hunt for a solution)
+			uncover(bestCol)
+			if level == 0 {
+				currentSearchState = doneState
+				break
+			}
+			level = level - 1
+			currentNode = choice[level]
+			bestCol = ncol[currentNode]
+			currentSearchState = recoverState
+		case recoverState:
+			// uncover the current row
+			// move on to the next potential row for the current column
+			// go to:
+			//   advanceState (analyze the selected row)
+			for pp := nleft[currentNode]; pp != currentNode; pp = nleft[pp] {
+				uncover(ncol[pp])
+			}
+			currentNode = ndown[currentNode]
+			choice[level] = currentNode
+			currentSearchState = advanceState
+		case doneState:
+			// we're done, go home
+			running = false
+		}
 	}
 
 	return solutions

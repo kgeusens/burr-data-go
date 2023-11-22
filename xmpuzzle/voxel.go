@@ -145,3 +145,17 @@ func (v *Voxel) NewWorldmap() Worldmap {
 	}
 	return wm
 }
+
+func (v *Voxel) Size() (size int) {
+	size = 0
+	for _, c := range v.Text {
+		if c == '+' || c == '#' {
+			size++
+		}
+	}
+	return size
+}
+
+func (v *Voxel) Volume() (size int) {
+	return int(v.X) * int(v.Y) * int(v.Z)
+}

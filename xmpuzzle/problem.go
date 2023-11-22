@@ -35,3 +35,31 @@ func (p *Problem) GetShapemap() (result []burrutils.Id_t) {
 	}
 	return
 }
+
+func (p *Problem) GetPartMinimum(partid burrutils.Id_t) (min uint8) {
+	if p.Shapes[partid].Count > 0 {
+		min = p.Shapes[partid].Count
+	} else {
+		min = p.Shapes[partid].Min
+	}
+	return min
+}
+
+func (p *Problem) GetPartMaximum(partid burrutils.Id_t) (max uint8) {
+	if p.Shapes[partid].Count > 0 {
+		max = p.Shapes[partid].Count
+	} else {
+		max = p.Shapes[partid].Max
+	}
+	return max
+}
+
+// KG: not implemented yet, returns false
+func (p *Problem) MaxHolesDefined() bool {
+	return false
+}
+
+// KG: not implemented yet, returns 0
+func (p *Problem) GetMaxHoles() int {
+	return 0
+}

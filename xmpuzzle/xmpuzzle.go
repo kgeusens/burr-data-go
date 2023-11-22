@@ -25,6 +25,24 @@ type Shape struct {
 	Group   uint8          `xml:"group,attr"`
 }
 
+func (s *Shape) GetPartMinimum() (r uint8) {
+	if s.Count > 0 {
+		r = s.Count
+	} else {
+		r = s.Min
+	}
+	return r
+}
+
+func (s *Shape) GetPartMaximum() (r uint8) {
+	if s.Count > 0 {
+		r = s.Count
+	} else {
+		r = s.Max
+	}
+	return r
+}
+
 type Result struct {
 	XMLName xml.Name `xml:"result"`
 	Id      int      `xml:"id,attr"`

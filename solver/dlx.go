@@ -61,13 +61,98 @@ func (sc ProblemCache_t) calcDLXrow(shapeid, rotid burrutils.Id_t, x, y, z burru
 		// The DLX algorithm in go is different, we just need to pass the positions of the "1"s
 		result = append(result, lookupMap[piecemap.Position(key)])
 	}
-	// Finally we need to add the optional column for the piece (regardless of rotation)
-	// This is at index "(size of resultvoxel) + pieceID"
-	//	result = append(result, resmap.Size()+int(shapeid))
 	slices.Sort(result)
 	return
 }
 
+func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
+	matrix := make(matrix_t, 0)
+	// calculate rotaionLists
+	rotationLists := make([]int, sc.idSize)
+	r := sc.GetResultInstance()
+	rbb := r.GetBoundingbox()
+	rsymgroupID := r.voxel.CalcSelfSymmetries()
+	// Determine symmetry breaker
+	breakerID := -1
+	voxelSize := uint8(0)
+	breakerReduction := 0
+	reducedRotlist := 0
+	shapeDefs := sc.puzzle.Problems[sc.problemIndex].Shapes
+	for idx, shape := range shapeDefs {
+		voxel := sc.puzzle.Shapes[shape.Id]
+		voxelSize = shape.GetPartMinimum()
+		symgroupID := voxel.CalcSelfSymmetries()
+		rotlist := burrutils.RotationsToCheck[symgroupID]
+		rotationLists[idx] = rotlist // no need to copy, this is just an integer bitmap
+		reducedRotlist = burrutils.ReduceRotations(rsymgroupID, rotlist)
+		rotlistLength := burrutils.BitmapSize(rotlist)
+		reducedRotlistLength := burrutils.BitmapSize(reducedRotlist)
+
+		if (rotlistLength - reducedRotlistLength) >= breakerReduction {
+			if (rotlistLength - reducedRotlistLength) == breakerReduction {
+				if voxelSize == 1 {
+					breakerID = idx
+				}
+			} else {
+				breakerID = idx
+				breakerReduction = rotlistLength - reducedRotlistLength
+			}
+		}
+	}
+
+	// caclulate the reduced rotationlist
+	if breakerID >= 0 {
+		reducedRotlist = burrutils.ReduceRotations(rsymgroupID, rotationLists[breakerID])
+		rotationLists[breakerID] = reducedRotlist
+	}
+	// now start building the DLX matrix, keeping track of duplicate voxels
+	// First we need to calculate the rows for every voxel, because the additional
+	// constraint columns will depend on the number of rows per voxel.
+	// We also need to keep track if the source rotation has been reduced or not
+	rowMap := make(map[burrutils.Id_t][]row_t)
+	annotationMap := make(map[burrutils.Id_t][]annotation_t)
+	var row row_t
+	for i := range shapeDefs {
+		idx := burrutils.Id_t(i)
+		//
+		rotlist := burrutils.HashToRotations(rotationLists[idx])
+		rowMap[idx] = make([]row_t, 0)
+		annotationMap[idx] = make([]annotation_t, 0)
+		for _, rotidx := range rotlist {
+			rotatedInstance := sc.GetShapeInstance(idx, rotidx)
+			pbb := rotatedInstance.GetBoundingbox()
+			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
+				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
+					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
+						row = sc.calcDLXrow(idx, rotidx, x, y, z)
+						if len(row) > 0 {
+							rowMap[idx] = append(rowMap[idx], row)
+							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(idx), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
+						}
+					}
+				}
+			}
+		}
+		// Now we have all the rows for the referenced voxels.
+		// The index in rowMap is NOT the voxelid, but the id of the Shapedefinition in the problem.
+	}
+
+	// construct the matrix
+	for i := range shapeDefs {
+		idx := burrutils.Id_t(i)
+		nRows := len(rowMap[idx])
+		for n := 0; n < nRows; n++ {
+			newrow := rowMap[idx][n]
+			newannotation := annotationMap[idx][n]
+			matrix = append(matrix, &matrixEntry_t{&newrow, &newannotation})
+		}
+
+	}
+
+	return &matrix
+}
+
+/*
 func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 	matrix := make(matrix_t, 0)
 	// calculate rotaionLists
@@ -134,7 +219,7 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 						row = sc.calcDLXrow(psid, rotidx, x, y, z)
 						if len(row) > 0 {
 							rowMap[idx] = append(rowMap[idx], row)
-							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(psid), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
+							annotationMap[idx] = append(annotationMap[idx], annotation_t{burrutils.Id_t(idx), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}})
 							// if this is the symmetry breaker, track a mapping of rownumber -> isReduced
 							if (i == breakerID) && (reducedRotlist&(1<<rotidx) > 0) {
 								breakerIsReduced[len(rowMap[idx])-1] = true
@@ -207,74 +292,7 @@ func (sc *ProblemCache_t) calcDLXmatrix() *matrix_t {
 
 	return &matrix
 }
-
-func (sc ProblemCache_t) calcDLXmatrix2() *matrix_t {
-	matrix := make(matrix_t, 0)
-	// calculate rotaionLists
-	rotationLists := make([]int, sc.idSize)
-	r := sc.GetResultInstance()
-	rbb := r.GetBoundingbox()
-	rsymgroupID := r.voxel.CalcSelfSymmetries()
-	// Determine symmetry breaker
-	breakerID := -1
-	breakerSize := 30000
-	voxelSize := 0
-	breakerReduction := 0
-	for psid := range sc.shapemap {
-		instance := sc.GetShapeInstance(burrutils.Id_t(psid), 0)
-		voxel := instance.voxel
-		voxelSize = instance.cachedWorldmap.Size()
-		symgroupID := voxel.CalcSelfSymmetries()
-		rotlist := burrutils.RotationsToCheck[symgroupID]
-		rotationLists[psid] = rotlist // no need to copy, this is just an integer bitmap
-		// need to imlplement breaker logic here
-		reducedRotlist := burrutils.ReduceRotations(rsymgroupID, rotlist)
-		rotlistLength := burrutils.BitmapSize(rotlist)
-		reducedRotlistLength := burrutils.BitmapSize(reducedRotlist)
-
-		if (rotlistLength - reducedRotlistLength) >= breakerReduction {
-			if (rotlistLength - reducedRotlistLength) == breakerReduction {
-				if voxelSize < breakerSize {
-					breakerSize = voxelSize
-					breakerID = psid
-				}
-			} else {
-				breakerID = psid
-				breakerReduction = rotlistLength - reducedRotlistLength
-			}
-		}
-	}
-	// reduce the breaker
-	if breakerID >= 0 {
-		rotationLists[breakerID] = burrutils.ReduceRotations(rsymgroupID, rotationLists[breakerID])
-	}
-	// We can also reduce the matrix for identical pieces. We just need to figure out which pieces
-	// originate from the same source voxel. That information is in the instance.voxel
-	//
-	// now start building the DLX matrix
-
-	for psid := range sc.shapemap {
-		rotlist := burrutils.HashToRotations(rotationLists[psid])
-		for _, rotidx := range rotlist {
-			rotatedInstance := sc.GetShapeInstance(burrutils.Id_t(psid), burrutils.Id_t(rotidx))
-			pbb := rotatedInstance.GetBoundingbox()
-
-			for x := rbb.Min[0] - pbb.Min[0]; x <= rbb.Max[0]-pbb.Max[0]; x++ {
-				for y := rbb.Min[1] - pbb.Min[1]; y <= rbb.Max[1]-pbb.Max[1]; y++ {
-					for z := rbb.Min[2] - pbb.Min[2]; z <= rbb.Max[2]-pbb.Max[2]; z++ {
-						row := sc.calcDLXrow(burrutils.Id_t(psid), burrutils.Id_t(rotidx), x, y, z)
-						if len(row) > 0 {
-							matrix = append(matrix, &matrixEntry_t{&row, &annotation_t{burrutils.Id_t(psid), rotidx, rotatedInstance.hotspot, [3]burrutils.Distance_t{x, y, z}}})
-						}
-					}
-				}
-			}
-
-		}
-	}
-
-	return &matrix
-}
+*/
 
 func (sc *ProblemCache_t) getDLXmatrix() *matrix_t {
 	if sc.dlxMatrixCache == nil {

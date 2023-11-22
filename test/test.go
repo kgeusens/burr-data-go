@@ -8,7 +8,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/kgeusens/go/burr-data/dlx"
 	"github.com/kgeusens/go/burr-data/solver"
 	"github.com/kgeusens/go/burr-data/xmpuzzle"
 )
@@ -30,22 +29,6 @@ func main() {
 		}
 		defer pprof.StopCPUProfile()
 	}
-
-	searchConfig := new(dlx.Searchconfig_t)
-	searchConfig.NumPrimary = 3
-	searchConfig.NumSecondary = 7
-	searchConfig.NumSolutions = 1
-	searchConfig.AddRow([]int{0, 3, 4}, "piece 1 position 1")
-	searchConfig.AddRow([]int{1, 3, 5}, "piece 1 position 2")
-	searchConfig.AddRow([]int{2, 3, 6}, "piece 1 position 3")
-	searchConfig.AddRow([]int{0, 4, 5, 6, 7}, "piece 2 position 1")
-	searchConfig.AddRow([]int{1, 5, 6, 8}, "piece 2 position 2")
-	searchConfig.AddRow([]int{2, 6, 9}, "piece 2 position 3")
-	searchConfig.AddRow([]int{0, 7, 8, 9}, "piece 3 position 1")
-	searchConfig.AddRow([]int{1, 8, 9}, "piece 3 position 2")
-	searchConfig.AddRow([]int{2, 9}, "piece 3 position 3")
-	res := searchConfig.Search()
-	fmt.Println(res)
 
 	/*
 		dlxMatrix, _ := dlx.New(3, 7)
