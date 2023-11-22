@@ -60,7 +60,7 @@ func NewSolverCache(pc *ProblemCache_t) (sc SolverCache_t) {
 	psc := new(SolverCache_t)
 	sc = *psc
 	sc.pc = pc
-	sc.movesList = make([]*node_t, 3*maxShapes)
+	sc.movesList = make([]*node_t, 0, 3*maxShapes)
 	sc.nodecache = NodeCache_t{make([]*node_t, 0)}
 	return
 }
@@ -252,7 +252,11 @@ func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 	return
 }
 
-func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
+func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
+	// pRow, pCol can only contain max nPieces, so better preallocate
+	// and reuse instead of doing a lot of append calls.
+	// movelist is a different beast and lenght is hard to predict.
+
 	nPieces := len(node.root.rootDetails.pieceList)
 	nDims := 3 * nPieces
 	// KG: storing and reusing matrix from the cache can probably save a lot of GC effort
@@ -276,9 +280,7 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 	}
 	// Phase 2: algorithm from Bill Cutler
 	again := true
-	var min burrutils.Distance_t
-	var ijStart, ikStart, kjStart int
-	var tmpval *burrutils.Distance_t
+	var minval burrutils.Distance_t
 	for again {
 		again = false
 		for j := 0; j < nPieces; j++ {
@@ -286,9 +288,9 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 				if i == j {
 					continue
 				}
-				ijStart = j*nDims + i*3
-				kjStart = j*nDims - 3
-				ikStart = i*3 - nDims
+				ijStart := j*nDims + i*3
+				kjStart := j*nDims - 3
+				ikStart := i*3 - nDims
 				for k := 0; k < nPieces; k++ {
 					kjStart += 3
 					ikStart += nDims
@@ -296,14 +298,13 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 						continue
 					}
 					for dim := 0; dim < 3; dim++ {
-						min = m[ikStart+dim] + m[kjStart+dim]
-						tmpval = &m[ijStart+dim]
-						if min < *tmpval {
-							*tmpval = min
+						minval = m[ikStart+dim] + m[kjStart+dim]
+						if minval < m[ijStart+dim] {
+							m[ijStart+dim] = minval
 							// optimize: check if this update impacts already updated values
 							if !again {
 								for a := 0; a < i; a++ {
-									if m[j*nDims+a*3+dim] > m[i*nDims+a*3+dim]+*tmpval {
+									if m[j*nDims+a*3+dim] > m[i*nDims+a*3+dim]+minval {
 										again = true
 										break
 									}
@@ -311,7 +312,7 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 							}
 							if !again {
 								for a := 0; a < j; a++ {
-									if m[a*nDims+i*3+dim] > m[a*nDims+j*3+dim]+*tmpval {
+									if m[a*nDims+i*3+dim] > m[a*nDims+j*3+dim]+minval {
 										again = true
 										break
 									}
@@ -323,17 +324,11 @@ func (sc *SolverCache_t) updateCutlerMatrix(node *node_t) {
 			}
 		}
 	}
-}
 
-func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
-	// pRow, pCol can only contain max nPieces, so better preallocate
-	// and reuse instead of doing a lot of append calls.
-	// movelist is a different beast and lenght is hard to predict.
-	sc.updateCutlerMatrix(node)
-	movelist := sc.movesList
-	movelistLen := 0
+	//	movelist := sc.movesList
+	sc.movesList = sc.movesList[:0]
 
-	nPieces := len(node.root.rootDetails.pieceList)
+	nPieces = len(node.root.rootDetails.pieceList)
 	pRow := make([]burrutils.Id_t, nPieces)
 	pCol := make([]burrutils.Id_t, nPieces)
 	var pRowLen, pColLen int
@@ -341,8 +336,6 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	vMoveCol := maxDistance + 1
 	var vCol, vRow burrutils.Distance_t
 
-	// rows first
-	// KG : colapse rows and cols into same logic
 	for dim := 0; dim < 3; dim++ {
 		for k := 0; k < nPieces; k++ {
 			pRowLen = 0
@@ -373,12 +366,12 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					if vMoveRow >= maxDistance {
 						offset[dim] = -1 * maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, true)}
+						sc.movesList = append(sc.movesList, sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, true))
+						return sc.movesList
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveRow; step++ {
 						offset[dim] = -1 * step
-						movelist[movelistLen] = sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, false)
-						movelistLen++
+						sc.movesList = append(sc.movesList, sc.nodecache.NewNodeChild(node, pRow[:pRowLen], offset, false))
 					}
 				}
 			}
@@ -390,18 +383,18 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 					if vMoveCol >= maxDistance {
 						offsetCol[dim] = maxDistance
 						// We should be returning an array of new nodes
-						return []*node_t{sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, true)}
+						sc.movesList = append(sc.movesList, sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, true))
+						return sc.movesList
 					}
 					for step := burrutils.Distance_t(1); step <= vMoveCol; step++ {
 						offsetCol[dim] = step
-						movelist[movelistLen] = sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, false)
-						movelistLen++
+						sc.movesList = append(sc.movesList, sc.nodecache.NewNodeChild(node, pCol[:pColLen], offsetCol, false))
 					}
 				}
 			}
 		}
 	}
-	return movelist[:movelistLen]
+	return sc.movesList
 }
 
 func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
@@ -421,6 +414,8 @@ func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
 	// adding an entry to closedCache : closedCache[id]=true
 	// checking if entry exists: closedCache[id]
 	separated := false
+	//	movesList := make([]*node_t, 0, maxShapes)
+	var movesListLength int
 	for len(parking) > 0 {
 		// pop from parking
 		if startNode != nil {
@@ -448,7 +443,7 @@ func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
 				fmt.Println(asmid, "node", node.GetId())
 			}
 			var st *node_t
-			movesListLength := len(movesList)
+			movesListLength = len(movesList)
 			for movesListLength != 0 && !separated {
 				// pop
 				movesListLength -= 1

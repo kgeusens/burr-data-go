@@ -22,7 +22,8 @@ type node_t struct {
 	offsetList      []burrutils.Distance_t
 	movingPieceList []burrutils.Id_t
 	moveDirection   [3]burrutils.Distance_t
-	id              *id_t
+	id              id_t
+	idValid         bool
 	rootDetails     *rootDetails_t
 }
 
@@ -33,17 +34,15 @@ type rootDetails_t struct {
 }
 
 func (node *node_t) GetId() id_t {
-	if node.id == nil {
+	if !node.idValid {
 		nPieces := len(node.root.rootDetails.pieceList)
 		offsetList := node.offsetList
-		node.id = new(id_t)
-		//		str := make([]string, nPieces*3+1)
 		for idx := 0; idx < nPieces; idx++ {
 			node.id[idx*3] = offsetList[idx*3] - offsetList[0]
 			node.id[1+idx*3] = offsetList[idx*3+1] - offsetList[1]
 			node.id[2+idx*3] = offsetList[idx*3+2] - offsetList[2]
 		}
-
+		node.idValid = true
 	}
-	return *node.id
+	return node.id
 }

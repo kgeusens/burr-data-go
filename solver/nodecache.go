@@ -19,8 +19,8 @@ func (nc *NodeCache_t) request() *node_t {
 		nc.freeList = nc.freeList[:cacheLen]
 	} else {
 		node = new(node_t)
-		node.movingPieceList = []burrutils.Id_t{}
-		node.offsetList = []burrutils.Distance_t{}
+		node.movingPieceList = make([]burrutils.Id_t, 0, maxShapes)
+		node.offsetList = make([]burrutils.Distance_t, 0, 3*maxShapes)
 	}
 	return node
 }
@@ -34,7 +34,7 @@ func (nc *NodeCache_t) release(node *node_t) {
 	node.moveDirection[0] = 0
 	node.moveDirection[1] = 0
 	node.moveDirection[2] = 0
-	node.id = nil
+	node.idValid = false
 	node.rootDetails = nil
 	nc.freeList = append(nc.freeList, node)
 }
