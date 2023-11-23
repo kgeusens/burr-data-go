@@ -12,8 +12,8 @@ import (
 	"github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
-var cpuprofile = flag.String("cpuprofile", "cpu.prof", "write cpu profile to `file`")
-var memprofile = flag.String("memprofile", "mem.prof", "write memory profile to `file`")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var memprofile = flag.String("memprofile", "", "write memory profile to `file`")
 
 func main() {
 
