@@ -94,7 +94,7 @@ func (config *Searchconfig_t) Search() [][]result_t {
 		numNodes += nodeindex_t(len(config.rows[i].coveredColumns)) + 1
 	}
 
-	solutions := [][]result_t{{}}
+	solutions := [][]result_t{}
 	nleft := make([]nodeindex_t, numNodes+headerSize+1)
 	nright := make([]nodeindex_t, numNodes+headerSize+1)
 	nup := make([]nodeindex_t, numNodes+headerSize+1)

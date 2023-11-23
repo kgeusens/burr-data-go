@@ -244,12 +244,8 @@ func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 		pmoves[0] = mx
 		pmoves[1] = my
 		pmoves[2] = mz
-	} else {
-		mx = pmoves[0]
-		my = pmoves[1]
-		mz = pmoves[2]
 	}
-	return
+	return pmoves[0], pmoves[1], pmoves[2]
 }
 
 func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
