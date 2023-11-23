@@ -147,8 +147,6 @@ func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 	hash := (((uint64(id1)*24+uint64(rot1))*uint64(pc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
 	pmoves, ok := pc.movementCache.Get(hash)
 	if !ok {
-		pmoves = new(maxVal_t)
-		pc.movementCache.Put(hash, pmoves)
 		// now start calculating
 		s1 := pc.GetShapeInstance(id1, rot1)
 		s2 := pc.GetShapeInstance(id2, rot2)
@@ -244,9 +242,8 @@ func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 				}
 			}
 		}
-		pmoves[0] = mx
-		pmoves[1] = my
-		pmoves[2] = mz
+		pmoves = &maxVal_t{mx, my, mz}
+		pc.movementCache.Put(hash, pmoves)
 	}
 	return pmoves[0], pmoves[1], pmoves[2]
 }
@@ -254,7 +251,7 @@ func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, 
 func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 	// pRow, pCol can only contain max nPieces, so better preallocate
 	// and reuse instead of doing a lot of append calls.
-	// movelist is a different beast and lenght is hard to predict.
+	// movelist is a different beast and length is hard to predict.
 
 	nPieces := len(node.root.rootDetails.pieceList)
 	nDims := 3 * nPieces
@@ -342,8 +339,8 @@ func (sc *SolverCache_t) getMovementList(node *node_t) []*node_t {
 			vMoveRow = maxDistance + 1
 			vMoveCol = maxDistance + 1
 			for i := 0; i < nPieces; i++ {
-				vCol = sc.cutlerMatrix[i*nPieces*3+k*3+dim]
-				vRow = sc.cutlerMatrix[k*nPieces*3+i*3+dim]
+				vCol = m[i*nPieces*3+k*3+dim]
+				vRow = m[k*nPieces*3+i*3+dim]
 				if vRow == 0 {
 					pRow[pRowLen] = burrutils.Id_t(i)
 					pRowLen++
