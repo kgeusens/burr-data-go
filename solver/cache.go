@@ -3,6 +3,7 @@ package solver
 import (
 	"fmt"
 
+	swiss "github.com/dolthub/swiss"
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
 	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
@@ -31,10 +32,11 @@ type ProblemCache_t struct {
 	resultVoxel    *xmpuzzle.Voxel
 	resultInstance *VoxelInstance
 	instanceCache  map[uint]*VoxelInstance
-	movementCache  map[uint64]*maxVal_t // cache for getMaxValue
-	dlxMatrixCache *matrix_t            // used by the DLX algorithm in assemble phase, contains the full DLX matrix
-	assemblyCache  []assembly_t         // result of the assemble phase
-	dlxLookupmap   map[maxVal_t]int     // used to calculate a row in the DLX matrix. Static throughout the cache lifecycle
+	//	movementCache  map[uint64]*maxVal_t // cache for getMaxValue
+	movementCache  swiss.Map[uint64, *maxVal_t]
+	dlxMatrixCache *matrix_t        // used by the DLX algorithm in assemble phase, contains the full DLX matrix
+	assemblyCache  []assembly_t     // result of the assemble phase
+	dlxLookupmap   map[maxVal_t]int // used to calculate a row in the DLX matrix. Static throughout the cache lifecycle
 }
 
 type SolverCache_t struct {
@@ -78,7 +80,8 @@ func NewProblemCache(puzzle *xmpuzzle.Puzzle, problemIdx uint) (pc ProblemCache_
 	resi := NewVoxelinstance(pc.resultVoxel, 0)
 	pc.resultInstance = &resi
 	pc.instanceCache = make(map[uint]*VoxelInstance)
-	pc.movementCache = make(map[uint64]*maxVal_t)
+	pc.movementCache = *swiss.NewMap[uint64, *maxVal_t](0)
+	//	pc.movementCache = make(map[uint64]*maxVal_t)
 	//	pc.movesList = make([]*node_t, 3*maxShapes)
 
 	resmap := *(resi.GetWorldmap())
@@ -142,10 +145,10 @@ Calculate a unique uint64 hashvalue for movements
 */
 func (pc *ProblemCache_t) getMaxValues(id1, rot1, id2, rot2 burrutils.Id_t, dx, dy, dz burrutils.Distance_t) (mx, my, mz burrutils.Distance_t) {
 	hash := (((uint64(id1)*24+uint64(rot1))*uint64(pc.idSize)+uint64(id2))*24+uint64(rot2))*worldSize + uint64(int(worldOriginIndex)+int(worldMax)*(int(dz)*int(worldMax)+int(dy))+int(dx))
-	pmoves := pc.movementCache[hash]
-	if pmoves == nil {
+	pmoves, ok := pc.movementCache.Get(hash)
+	if !ok {
 		pmoves = new(maxVal_t)
-		pc.movementCache[hash] = pmoves
+		pc.movementCache.Put(hash, pmoves)
 		// now start calculating
 		s1 := pc.GetShapeInstance(id1, rot1)
 		s2 := pc.GetShapeInstance(id2, rot2)
