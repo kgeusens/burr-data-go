@@ -464,8 +464,13 @@ func (pc *ProblemCache_t) Solve(assembly assembly_t, asmid int) bool {
 					continue
 				} else {
 					// this is a separation, put the sub problems on the parking lot and continue to the next one on the parking
+					// Need to record this in the partial solution
 					separated = true // FLAG STOP TO GO TO NEXT ON PARKING
 					parking = append(parking, sc.nodecache.Separate(st)...)
+					// record this separation by walking back up to the root
+					st.RecordSeparationInRoot()
+					// now cleanup and release all nodes, except for the root, and this node itself (the parent of the separation)
+					sc.nodecache.Purge()
 					if DEBUG {
 						fmt.Println(asmid, "SEPARATION FOUND level", level)
 					}

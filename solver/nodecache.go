@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	burrutils "github.com/kgeusens/go/burr-data/burrutils"
+	xmpuzzle "github.com/kgeusens/go/burr-data/xmpuzzle"
 )
 
 type NodeCache_t struct {
@@ -39,6 +40,15 @@ func (nc *NodeCache_t) release(node *node_t) {
 	nc.freeList = append(nc.freeList, node)
 }
 
+/*
+Purge:
+
+Release every node in the cache, except for roots and separations
+*/
+func (nc *NodeCache_t) Purge() {
+
+}
+
 func (nc *NodeCache_t) NewNodeChild(parent *node_t, movingPieceList []burrutils.Id_t, translation [3]burrutils.Distance_t, separation bool) (child *node_t) {
 	child = nc.request()
 	child.root = parent.root
@@ -63,7 +73,7 @@ func (nc *NodeCache_t) NewNodeChild(parent *node_t, movingPieceList []burrutils.
 func (nc *NodeCache_t) NewNodeFromAssembly(assembly assembly_t) *node_t {
 	root := nc.request()
 	root.root = root
-	root.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
+	root.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}, &xmpuzzle.Separation{}}
 	// loop over the shape annotations
 	for _, v := range assembly {
 		root.rootDetails.pieceList = append(root.rootDetails.pieceList, v.shapeID)
@@ -83,7 +93,8 @@ func (nc *NodeCache_t) Separate(node *node_t) []*node_t {
 			// so at this point, we know we are a separation
 			// movingPieceList and movingDirection tells us what to work with
 			newRoot := nc.request()
-			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
+			node.root.rootDetails.separation.Separations = append(node.root.rootDetails.separation.Separations, xmpuzzle.Separation{})
+			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}, &node.root.rootDetails.separation.Separations[len(node.root.rootDetails.separation.Separations)-1]}
 			newRoot.parent = node
 			newRoot.root = newRoot
 			// only keep the pieces that are not moving. Filter out the moving pieces
@@ -108,7 +119,8 @@ func (nc *NodeCache_t) Separate(node *node_t) []*node_t {
 		if len(node.movingPieceList) > 1 {
 			// This is normally the smallest partition
 			newRoot := nc.request()
-			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}}
+			node.root.rootDetails.separation.Separations = append(node.root.rootDetails.separation.Separations, xmpuzzle.Separation{})
+			newRoot.rootDetails = &rootDetails_t{[]burrutils.Id_t{}, []burrutils.Id_t{}, []burrutils.Distance_t{}, &node.root.rootDetails.separation.Separations[len(node.root.rootDetails.separation.Separations)-1]}
 			newRoot.parent = node
 			newRoot.root = newRoot
 			// only keep the pieces that are not moving. Filter out the moving pieces
